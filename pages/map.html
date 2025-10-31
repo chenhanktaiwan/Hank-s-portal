@@ -1,14 +1,19 @@
-<h2>地圖</h2>
-<p>這裡未來可以嵌入 Google Maps 或其他地圖服務。(內容來自 <strong>map.html</strong>)</p>
-<p>例如，您可以插入一個 `<iframe>` 標籤來嵌入地圖：</p>
-<pre><code>
-&lt;!-- 範例：嵌入 Google Map --&gt;
-&lt;iframe 
-  src="https://www.google.com/maps/embed?..." 
-  width="100%" 
-  height="450" 
-  style="border:0;" 
-  allowfullscreen="" 
-  loading="lazy"&gt;
-&lt;/iframe&gt;
-</code></pre>
+<div class="card full-map-card">
+    <div class="section-header">
+        <div class="section-title">
+            <div class="section-icon">📍</div>
+            全頁面地圖
+        </div>
+        <div class="map-search-box">
+            <input id="fullMapSearchInput" class="search-input" placeholder="搜尋地點或地址...">
+            <button id="fullMapSearchBtn" class="search-btn">搜尋</button>
+        </div>
+    </div>
+    
+    <div class="full-map-content">
+        <iframe id="fullMapFrame"
+            src="https://maps.google.com/maps?q=$2"
+            frameborder="0" scrolling="no" marginheight="0" marginwidth="0">
+        </iframe>
+    </div>
+</div>
