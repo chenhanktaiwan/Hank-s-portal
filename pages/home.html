@@ -1,3 +1,55 @@
-<h2>歡迎來到首頁</h2>
-<p>這是您的個人化入口網站。這個內容是從 <strong>pages/home.html</strong> 動態載入的。</p>
-<p>您可以嘗試點擊其他分頁，看看內容區域的變化。這個架構讓您未來可以輕易地擴充或修改任何一個分頁，而不需要動到主 `index.html` 檔案。</p>
+<div class="header">
+  <div class="header-top">
+    <div class="greeting-section">
+      <div class="greeting">您好！歡迎回來 👋</div>
+      <div class="datetime" id="datetime"></div>
+    </div>
+    <div class="weather-forecast-horizontal" id="weatherRow">
+      <div class="weather-loading">載入天氣資料中...</div>
+    </div>
+    <select id="locationSelectorMain" class="location-selector" aria-label="選擇城市">
+      <option value="25.0330,121.5654">台北市</option>
+      <option value="24.1477,120.6736">台中市</option>
+      <option value="22.6273,120.3014">高雄市</option>
+      <option value="25.0375,121.4252">新北市</option>
+      <option value="24.8138,120.9675">新竹市</option>
+      <option value="24.9936,121.3010">桃園市</option>
+      <option value="22.9998,120.2269">台南市</option>
+    </select>
+  </div>
+</div>
+
+<div class="info-section">
+  <section class="news-card">
+    <div class="section-header">
+      <div class="section-title">
+        <div class="section-icon">📰</div>
+        今日新聞
+      </div>
+      <div class="news-tabs">
+        <button id="tab-tw" class="news-tab active">台灣</button>
+        <button id="tab-jp" class="news-tab">日本</button>
+        <button id="tab-intl" class="news-tab">國際</button>
+        <button id="refreshNewsBtn" class="refresh-btn">重新整理</button>
+      </div>
+    </div>
+    <ul id="newsList" class="news-list"></ul>
+  </section>
+  
+  <section class="stock-card">
+    <div class="section-header">
+      <div class="section-title">股票追蹤</div>
+      <div class="stock-tabs">
+        <button id="stockTab_tw" class="stock-tab active">台股</button>
+        <button id="stockTab_us" class="stock-tab">美股</button>
+      </div>
+    </div>
+    <div class="stock-search">
+      <input id="stockInput" class="stock-search-input" placeholder="輸入股票代碼（例：2330 / AAPL）" />
+      <button id="stockAddBtn" class="stock-add-btn">加入</button>
+    </div>
+    <div id="stocksList" class="stock-list">
+      <div class="stocks-loading">載入股票資料中...</div>
+    </div>
+  </section>
+</div>
