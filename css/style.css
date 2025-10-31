@@ -1,4 +1,4 @@
-/* css/style.css (完整版) */
+/* css/style.css (完整版 - 包含可編輯快捷列) */
 
 /* --- 1. 新架構 (莫蘭迪) 基礎樣式 --- */
 :root {
@@ -535,4 +535,89 @@ body {
 .quick-link-item:hover .quick-link-icon {
   background: #b8d4cb;
   box-shadow: 0 4px 12px #b8cac7;
+}
+
+/* --- 7. ★ 新增的 "快捷列編輯" 樣式 ★ --- */
+
+/* 標題中的 "編輯" 按鈕 */
+.quick-link-edit-btn {
+    background: #cce3db;
+    border: none;
+    color: #3e7e72;
+    font-weight: 600;
+    font-size: 12px;
+    padding: 2px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-left: auto; /* 將按鈕推到最右邊 */
+    transition: background 0.3s, color 0.3s;
+}
+.quick-link-edit-btn:hover { background: #b8d4cb; }
+
+/* "編輯中" 狀態的按鈕 (變紅色) */
+.quick-link-edit-btn.editing {
+    background: #e2646a;
+    color: white;
+}
+
+/* 顯示在圖示右上角的 "X" 刪除按鈕 */
+.quick-link-item {
+    position: relative; /* 讓刪除按鈕可以絕對定位 */
+}
+.quick-link-delete-btn {
+    display: none; /* 預設隱藏 */
+    position: absolute;
+    top: -8px;
+    right: -2px; /* 調整 X 的位置 */
+    background: #e2646a;
+    color: white;
+    border: 2px solid white;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 20px; /* 讓 "X" 垂直置中 */
+    text-align: center;
+    z-index: 10;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+/* 當 .quick-links-bar 處於 .editing 狀態時，顯示 "X" 按鈕 */
+.quick-links-bar.editing .quick-link-delete-btn {
+    display: block;
+}
+
+/* 新增連結的 "+" 按鈕樣式 */
+.quick-link-add-btn .quick-link-icon {
+    background: #eef3f3;
+    color: #7a9794;
+    font-size: 24px;
+}
+.quick-link-add-btn:hover .quick-link-icon {
+    background: #dde9e7;
+    box-shadow: none;
+}
+
+/* 用於新增/編輯的表單 */
+.quick-link-form {
+    border-top: 2px solid #e0ebea;
+    padding-top: 16px;
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.quick-link-form h3 {
+    color: #578f89;
+    margin: 0;
+    font-size: 16px;
+}
+.quick-link-form .search-input {
+    background: #f1f7f5;
+}
+.quick-link-form-controls {
+    display: flex;
+    gap: 10px;
 }
