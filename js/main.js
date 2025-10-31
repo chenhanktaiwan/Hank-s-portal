@@ -1,10 +1,9 @@
-// js/main.js (完整版 - 包含 V5 首頁所有功能)
+// js/main.js (完整版 - 包含 V5 首頁 + 工作 + 新聞 + 地圖)
 
 // --- ★★★ V5 移植過來的全域變數和輔助函式 ★★★ ---
 
 // V5 [保留] openLink 函式 (快捷列會用到)
 function openLink(url) {
-    // [修改] 增加檢查，防止在編輯模式下點擊連結
     if (typeof isWorkLinkEditing !== 'undefined' && isWorkLinkEditing) return; 
     window.open(url, '_blank');
 }
@@ -30,7 +29,7 @@ function searchGoogleMaps() {
     if (!query) return;
     const mapFrame = document.getElementById('mapFrame');
     if (!mapFrame) return;
-    const newSrc = `http://googleusercontent.com/maps.google.com/9{encodeURIComponent(query)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+    const newSrc = `https://maps.google.com/maps?q=$3{encodeURIComponent(query)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
     mapFrame.src = newSrc;
 }
 
@@ -48,7 +47,7 @@ const RSS_FEEDS = {
     jp: ['https://www3.nhk.or.jp/rss/news/cat0.xml', 'https://www.asahi.com/rss/asahi/newsheadlines.rdf'],
     intl: ['https://feeds.bbci.co.uk/news/world/rss.xml']
 };
-let currentNewsTab = 'tw';
+let currentNewsTab = 'tw'; // 首頁小工具
 
 // 股票 (V5)
 const stockWatchlist = {
@@ -95,12 +94,12 @@ function updateWeather(sourceSelectorId){
   });
 }
 
-// V5 新聞函式
+// V5 新聞函式 (首頁小工具)
 function switchNewsTab(tab){
   currentNewsTab = tab;
   const contentArea = document.getElementById('content-area');
   if (!contentArea) return;
-  contentArea.querySelectorAll('.news-tab').forEach(btn => btn.classList.remove('active'));
+  contentArea.querySelectorAll('#page-home .news-tab').forEach(btn => btn.classList.remove('active'));
   const activeTab = contentArea.querySelector('#tab-'+tab);
   if (activeTab) activeTab.classList.add('active');
   loadNews();
@@ -113,7 +112,7 @@ function cleanCData(str) {
 }
 function parseRSS(xmlText) {
     const articles = [];
-    const maxArticles = 5;
+    const maxArticles = 5; // 首頁小工具只顯示 5 篇
     let items = [...xmlText.matchAll(/<item>([\s\S]*?)<\/item>/g)];
     if (items.length === 0) items.push(...xmlText.matchAll(/<item [^>]+>([\s\S]*?)<\/item>/g));
     if (items.length === 0) {
@@ -150,7 +149,7 @@ async function loadNews(){
           const res = await fetch(proxyUrl);
           const xmlText = await res.text();
           if (!res.ok) { throw new Error(xmlText); }
-          const articles = parseRSS(xmlText);
+          const articles = parseRSS(xmlText); // 使用 5 篇的 parser
           if (articles && articles.length > 0) {
               list.innerHTML = '';
                articles.forEach(article => {
@@ -264,9 +263,7 @@ function addStock() {
 }
 
 
-// --- ★★★ 1. (修改) "工作" 分頁快捷列資料 ★★★ ---
-
-// 預設連結 (僅在 localStorage 為空時使用)
+// --- ★★★ "工作" 分頁快捷列資料 ★★★ ---
 const defaultWorkLinks = [
     { name: 'WACA', url: 'https://waca.com.tw', icon: 'GO' },
     { name: 'ヤクルト本社', url: 'https://www.yakult.co.jp', icon: '本社' },
@@ -275,15 +272,11 @@ const defaultWorkLinks = [
     { name: 'GitHub', url: 'https://github.com/', icon: 'GH' },
     { name: 'Gemini', url: 'https://gemini.google.com/', icon: 'AI' }
 ];
-
-// 全域變數，用於儲存連結和編輯狀態
 let workQuickLinks = [];
 let isWorkLinkEditing = false;
 
 
-// --- ★★★ 2. (修改) "工作" 分頁 JS 邏輯 (V5 移植 + 新增編輯功能) ★★★ ---
-
-// 2a. 快捷列 (新增 載入/儲存/渲染/編輯 功能)
+// --- ★★★ "工作" 分頁 JS 邏輯 ★★★ ---
 function loadWorkQuickLinks() {
     const storedLinks = localStorage.getItem('portalWorkLinks');
     if (storedLinks) {
@@ -299,9 +292,8 @@ function saveWorkQuickLinks() {
 function renderWorkQuickLinks() {
     const container = document.getElementById('workQuickLinksContainer');
     if (!container) return;
-    container.innerHTML = ''; // 清空
+    container.innerHTML = '';
     container.classList.toggle('editing', isWorkLinkEditing);
-    
     workQuickLinks.forEach((link, index) => {
         container.innerHTML += `
             <a class="quick-link-item" onclick="openLink('${link.url}')" title="${link.name}">
@@ -311,7 +303,6 @@ function renderWorkQuickLinks() {
             </a>
         `;
     });
-
     if (isWorkLinkEditing) {
         container.innerHTML += `
             <a class="quick-link-item quick-link-add-btn" id="addNewLinkBtn" title="新增連結">
@@ -324,7 +315,6 @@ function renderWorkQuickLinks() {
 function toggleEditMode() {
     isWorkLinkEditing = !isWorkLinkEditing;
     const editBtn = document.getElementById('editLinksBtn');
-    
     if (isWorkLinkEditing) {
         if(editBtn) editBtn.textContent = '完成';
         if(editBtn) editBtn.classList.add('editing');
@@ -342,9 +332,7 @@ function showLinkForm(index = -1) {
     const urlInput = document.getElementById('quickLinkUrl');
     const iconInput = document.getElementById('quickLinkIcon');
     const indexInput = document.getElementById('quickLinkIndex');
-    
     if (!form || !title || !nameInput || !urlInput || !iconInput || !indexInput) return;
-
     if (index === -1) {
         title.textContent = '新增連結';
         indexInput.value = '-1';
@@ -363,25 +351,20 @@ function saveLink() {
     const urlInput = document.getElementById('quickLinkUrl');
     const iconInput = document.getElementById('quickLinkIcon');
     const indexInput = document.getElementById('quickLinkIndex');
-
     const name = nameInput.value.trim();
     let url = urlInput.value.trim();
     const icon = iconInput.value.trim() || name.substring(0, 2);
     const index = parseInt(indexInput.value, 10);
-
     if (!name || !url) {
         alert('名稱和網址為必填項。');
         return;
     }
-    
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
         url = 'https://' + url;
     }
-
     if (index === -1) {
         workQuickLinks.push({ name, url, icon });
     }
-    
     saveWorkQuickLinks();
     renderWorkQuickLinks();
     hideLinkForm();
@@ -393,9 +376,6 @@ function deleteLink(index) {
         renderWorkQuickLinks();
     }
 }
-
-
-// 2b. 待辦事項 (V5)
 let todos = [];
 function loadTodos() {
   const storedTodos = localStorage.getItem('portalTodos');
@@ -443,8 +423,6 @@ function handleTodoClick(e) {
   saveTodos();
   renderTodos();
 }
-
-// 2c. 快速筆記 (V5)
 function loadNotes() {
   const notesArea = document.getElementById('quickNotesArea');
   if (notesArea) {
@@ -462,8 +440,6 @@ function saveNotes() {
     }
   }
 }
-
-// 2d. 番茄鐘 (V5)
 let pomoInterval;
 let pomoTimeLeft = 25 * 60;
 let pomoMode = 'work';
@@ -520,7 +496,132 @@ function resetPomo() {
   if (pomoStatusDisplay) pomoStatusDisplay.textContent = '準備開始工作 🧑‍💻';
 }
 
-// --- ★★★ 3. (修改) 新架構的 JS 邏輯 ★★★ ---
+
+// --- ★★★ 4. (新) "新聞" 分頁 JS 邏輯 ★★★ ---
+let fullNewsTab = 'tw'; // "新聞" 分頁專用的標籤狀態
+
+// [新] 解析更完整 RSS (包含 description)
+function parseFullRSS(xmlText) {
+    const articles = [];
+    const maxArticles = 20; // 顯示更多新聞
+    let items = [...xmlText.matchAll(/<item>([\s\S]*?)<\/item>/g)];
+    if (items.length === 0) items.push(...xmlText.matchAll(/<item [^>]+>([\s\S]*?)<\/item>/g));
+    if (items.length === 0) {
+         items.push(...xmlText.matchAll(/<item[^>]+rdf:about="([^"]+)"[\s\S]*?<title>([\s\S]*?)<\/title>[\s\S]*?<\/item>/g));
+         for (let i = 0; i < items.length && i < maxArticles; i++) {
+             articles.push({ title: cleanCData(items[i][2]), url: items[i][1], source: { name: '朝日新聞' }, description: '...' });
+         }
+         return articles;
+    }
+    for (let i = 0; i < items.length && i < maxArticles; i++) {
+        const itemContent = items[i][1];
+        const titleMatch = itemContent.match(/<title>([\s\S]*?)<\/title>/);
+        const title = titleMatch ? cleanCData(titleMatch[1]) : '無標題';
+        const linkMatch = itemContent.match(/<link>([\s\S]*?)<\/link>/);
+        const link = linkMatch ? (linkMatch[1] || '#') : '#';
+        
+        // [新] 抓取 <description>
+        const descMatch = itemContent.match(/<description>([\s\S]*?)<\/description>/);
+        let description = descMatch ? cleanCData(descMatch[1]) : '...';
+        description = description.replace(/<[^>]+>/g, '').trim(); // 清理 HTML
+        if (description.length > 150) { // 摘要截短
+            description = description.substring(0, 150) + '...';
+        }
+
+        let sourceName = null;
+        const creatorMatch = itemContent.match(/<dc:creator>([\s\S]*?)<\/dc:creator>/);
+        sourceName = creatorMatch ? cleanCData(creatorMatch[1]) : 'N/A';
+        
+        articles.push({ 
+            title: title, 
+            url: link.trim(), 
+            source: { name: sourceName },
+            description: description
+        });
+    }
+    return articles;
+}
+
+// [新] 載入完整新聞 (for News Page)
+async function loadFullNews() {
+    const list = document.getElementById('fullNewsList');
+    if (!list) return;
+    list.innerHTML = '<li class="news-loading">載入新聞中...</li>';
+    const refreshBtn = document.getElementById('full-refreshNewsBtn');
+    if (refreshBtn) refreshBtn.disabled = true;
+    
+    const urlsToTry = RSS_FEEDS[fullNewsTab] || RSS_FEEDS['tw'];
+    let success = false;
+    for (const rssUrl of urlsToTry) {
+        try {
+            const proxyUrl = `/functions/get-news?url=${encodeURIComponent(rssUrl)}`;
+            const res = await fetch(proxyUrl);
+            const xmlText = await res.text();
+            if (!res.ok) { throw new Error(xmlText); }
+            
+            const articles = parseFullRSS(xmlText); // [新] 使用 full parser
+            
+            if (articles && articles.length > 0) {
+                list.innerHTML = '';
+                articles.forEach(article => {
+                    let sourceName = article.source.name;
+                    if (sourceName === 'N/A' || !sourceName) {
+                        if (rssUrl.includes('cna.com')) sourceName = '中央通訊社';
+                        else if (rssUrl.includes('ltn.com')) sourceName = '自由時報';
+                        else if (rssUrl.includes('nhk.or.jp')) sourceName = 'NHK';
+                        else if (rssUrl.includes('bbci.co.uk')) sourceName = 'BBC News';
+                        else sourceName = 'RSS 來源';
+                    }
+                    
+                    list.insertAdjacentHTML('beforeend', `
+                        <li class="full-news-item" onclick="openLink('${article.url}')">
+                            <div class="full-news-title">${article.title || '無標題'}</div>
+                            <div class="full-news-meta">${sourceName}</div>
+                            <div class="full-news-desc">${article.description}</div>
+                        </li>`);
+                });
+                success = true;
+                break;
+            } else { throw new Error('RSS 內容為空或無法解析'); }
+        } catch(e) { 
+            console.warn(`RSS 來源 ${rssUrl} 失敗: ${e.message}`); 
+            list.innerHTML = `<li class="news-loading">新聞載入失敗: ${e.message}</li>`;
+        }
+    }
+    if (!success && list.innerHTML.includes('載入新聞中')) { 
+        list.innerHTML = `<li class="news-loading">新聞載入失敗。</li>`;
+    }
+    if (refreshBtn) refreshBtn.disabled = false;
+}
+
+// [新] 切換完整新聞 (for News Page)
+function switchFullNewsTab(tab) {
+    fullNewsTab = tab;
+    const contentArea = document.getElementById('content-area');
+    if (!contentArea) return;
+    contentArea.querySelectorAll('#page-news .news-tab').forEach(btn => btn.classList.remove('active'));
+    const activeTab = contentArea.querySelector('#full-tab-'+tab);
+    if (activeTab) activeTab.classList.add('active');
+    loadFullNews();
+}
+
+
+// --- ★★★ 5. (新) "地圖" 分頁 JS 邏輯 ★★★ ---
+
+// [新] 搜尋全螢幕地圖 (for Map Page)
+function searchFullGoogleMaps() {
+    const input = document.getElementById('fullMapSearchInput');
+    if (!input) return;
+    const query = input.value.trim();
+    if (!query) return;
+    const mapFrame = document.getElementById('fullMapFrame');
+    if (!mapFrame) return;
+    const newSrc = `https://maps.google.com/maps?q=$4{encodeURIComponent(query)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+    mapFrame.src = newSrc;
+}
+
+
+// --- ★★★ 6. (修改) 新架構的 JS 核心邏輯 ★★★ ---
 
 document.addEventListener('DOMContentLoaded', function() {
     
@@ -537,10 +638,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 const html = await response.text();
                 contentArea.innerHTML = html;
                 
+                // ★ [修改] 根據載入的頁面，執行不同的初始化
                 if (pageName === 'home') {
                     initHomePage();
                 } else if (pageName === 'work') {
                     initWorkPage();
+                } else if (pageName === 'news') {
+                    initNewsPage(); // ★ 新增
+                } else if (pageName === 'map') {
+                    initMapPage(); // ★ 新增
                 }
             }
         } catch (error) {
@@ -550,7 +656,7 @@ document.addEventListener('DOMContentLoaded', function() {
         contentArea.style.opacity = 1;
     }
 
-    // (★ 修改 ★) "首頁" 啟動函式 (V5 移植 + 新增搜尋功能)
+    // "首頁" 啟動函式
     function initHomePage() {
         // 載入資料
         updateDatetime();
@@ -581,20 +687,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const addStockBtn = homeContent.querySelector('#stockAddBtn');
         if (addStockBtn) addStockBtn.onclick = addStock;
 
-        // ★ 新增：綁定 Google 搜尋 ★
         const searchBtn = homeContent.querySelector('#searchBtn');
         if (searchBtn) searchBtn.onclick = doGoogleSearch;
         const searchInput = homeContent.querySelector('#searchInput');
         if (searchInput) searchInput.addEventListener('keypress', e => { if (e.key === 'Enter') doGoogleSearch(); });
 
-        // ★ 新增：綁定地圖搜尋 ★
         const mapSearchBtn = homeContent.querySelector('#mapSearchBtn');
         if (mapSearchBtn) mapSearchBtn.onclick = searchGoogleMaps;
         const mapSearchInput = homeContent.querySelector('#mapSearchInput');
         if (mapSearchInput) mapSearchInput.addEventListener('keypress', e => { if (e.key === 'Enter') searchGoogleMaps(); });
     }
     
-    // "工作" 頁面啟動函式 (保持不變)
+    // "工作" 頁面啟動函式
     function initWorkPage() {
         loadWorkQuickLinks();
         renderWorkQuickLinks();
@@ -642,6 +746,41 @@ document.addEventListener('DOMContentLoaded', function() {
         if (pomoStartBtn) pomoStartBtn.onclick = startPausePomo;
         const pomoResetBtn = workContent.querySelector('#pomoResetBtn');
         if (pomoResetBtn) pomoResetBtn.onclick = resetPomo;
+    }
+
+    // ★ (新) "新聞" 頁面啟動函式 ★
+    function initNewsPage() {
+        // 1. 載入資料
+        loadFullNews();
+
+        // 2. 綁定按鈕事件
+        const newsContent = document.getElementById('content-area');
+        if (!newsContent) return;
+
+        const newsTw = newsContent.querySelector('#full-tab-tw');
+        if (newsTw) newsTw.onclick = () => switchFullNewsTab('tw');
+        
+        const newsJp = newsContent.querySelector('#full-tab-jp');
+        if (newsJp) newsJp.onclick = () => switchFullNewsTab('jp');
+        
+        const newsIntl = newsContent.querySelector('#full-tab-intl');
+        if (newsIntl) newsIntl.onclick = () => switchFullNewsTab('intl');
+        
+        const refreshNews = newsContent.querySelector('#full-refreshNewsBtn');
+        if (refreshNews) refreshNews.onclick = loadFullNews;
+    }
+
+    // ★ (新) "地圖" 頁面啟動函式 ★
+    function initMapPage() {
+        // 綁定地圖搜尋事件
+        const mapContent = document.getElementById('content-area');
+        if (!mapContent) return;
+
+        const mapSearchBtn = mapContent.querySelector('#fullMapSearchBtn');
+        if (mapSearchBtn) mapSearchBtn.onclick = searchFullGoogleMaps;
+        
+        const mapSearchInput = mapContent.querySelector('#fullMapSearchInput');
+        if (mapSearchInput) mapSearchInput.addEventListener('keypress', e => { if (e.key === 'Enter') searchFullGoogleMaps(); });
     }
 
     // 處理分頁點擊
