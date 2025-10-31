@@ -1,6 +1,11 @@
-// js/main.js (已更新 - 2025/10/31)
+// js/main.js (已更新 - 2025/10/31 v3)
 
 // --- ★★★ V5 移植過來的全域變數和輔助函式 ★★★ ---
+
+// V5 [保留] openLink 函式 (快捷列會用到)
+function openLink(url) {
+    window.open(url, '_blank');
+}
 
 // 天氣 (V5)
 const weatherCodes = {
@@ -36,16 +41,13 @@ function updateDatetime() {
   }
 }
 
-// VG 天氣函式
+// V5 天氣函式
 function updateWeather(sourceSelectorId){
   const selectorMain = document.getElementById('locationSelectorMain');
   const targetRow = document.getElementById('weatherRow');
-  
   if (!selectorMain || !targetRow) return;
-
   let v = selectorMain.value.split(',');
   targetRow.innerHTML = '<div class="weather-loading">載入天氣資料中...</div>';
-
   fetch(`https://api.open-meteo.com/v1/forecast?latitude=${v[0]}&longitude=${v[1]}&current_weather=true&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia/Taipei&forecast_days=7`)
   .then(r=>r.json()).then(d=>{
     let html='';
@@ -113,21 +115,15 @@ async function loadNews(){
   list.innerHTML = '<li class="news-loading">載入新聞中...</li>';
   const refreshBtn = document.getElementById('refreshNewsBtn');
   if (refreshBtn) refreshBtn.disabled = true;
-  
   const urlsToTry = RSS_FEEDS[currentNewsTab] || RSS_FEEDS['tw'];
   let success = false;
   for (const rssUrl of urlsToTry) {
       try {
-          // ★★★ [修改] 呼叫我們自己的 /functions/get-news 代理 ★★★
           const proxyUrl = `/functions/get-news?url=${encodeURIComponent(rssUrl)}`;
-          
           const res = await fetch(proxyUrl);
-          if (!res.ok) throw new Error(`代理伺服器錯誤 (狀態: ${res.status})`);
-          
-          // ★★★ [修改] 代理直接回傳 text，不再是 JSON ★★★
           const xmlText = await res.text();
+          if (!res.ok) { throw new Error(xmlText); }
           const articles = parseRSS(xmlText);
-          
           if (articles && articles.length > 0) {
               list.innerHTML = '';
                articles.forEach(article => {
@@ -140,7 +136,7 @@ async function loadNews(){
                       else sourceName = 'RSS 來源';
                   }
                   list.insertAdjacentHTML('beforeend', `
-                      <li class="news-item" onclick="window.open('${article.url}','_blank')">
+                      <li class="news-item" onclick="openLink('${article.url}')">
                           <div class="news-item-title">${article.title || '無標題'}</div>
                           <div class="news-item-meta"><span>${sourceName}</span></div>
                       </li>`);
@@ -148,9 +144,14 @@ async function loadNews(){
               success = true;
               break;
            } else { throw new Error('RSS 內容為空或無法解析'); }
-      } catch(e) { console.warn(`RSS 來源 ${rssUrl} 失敗: ${e.message}`); }
+      } catch(e) { 
+          console.warn(`RSS 來源 ${rssUrl} 失敗: ${e.message}`); 
+          list.innerHTML = `<li class="news-loading">新聞載入失敗: ${e.message}</li>`;
+      }
   }
-  if (!success) { list.innerHTML = `<li class="news-loading">新聞載入失敗。</li>`; }
+  if (!success && list.innerHTML.includes('載入新聞中')) { 
+      list.innerHTML = `<li class="news-loading">新聞載入失敗。</li>`;
+  }
   if (refreshBtn) refreshBtn.disabled = false;
 }
 
@@ -167,21 +168,16 @@ function switchStockMarket(market){
 async function loadStocks(){
   const container = document.getElementById('stocksList');
   if (!container) return;
-  
   const watchlist = stockWatchlist[stockCurrentMarket];
   container.innerHTML = '<div class="stocks-loading">載入股票資料中...</div>';
-  
   if(stockCurrentMarket==='tw'){
     container.innerHTML = '';
     for(const symbol of watchlist){
       try{
-        // ★★★ [修改] 呼叫我們自己的 /functions/get-tw-stock 代理 ★★★
         const proxyUrl = `/functions/get-tw-stock?symbol=${symbol}`;
-        
         const res = await fetch(proxyUrl);
-        // ★★★ [修改] 代理直接回傳 JSON，不再需要 .contents ★★★
-        const data = await res.json(); 
-        
+        const data = await res.json();
+        if (data.error) { throw new Error(data.error); }
         if(data.msgArray && data.msgArray.length > 0) {
           const st = data.msgArray[0];
           const price = parseFloat(st.z) || 0;
@@ -194,24 +190,30 @@ async function loadStocks(){
       }catch(e){ container.insertAdjacentHTML('beforeend', `<div class="stock-item">載入 ${symbol} 失敗: ${e.message}</div>`); }
     }
   } else {
-    // 美股 (V5 - 保持不變, 仍使用 /functions/get-stock)
     container.innerHTML = '';
     for(const symbol of watchlist){
       try{
         const url = `/functions/get-stock?symbol=${symbol}`; 
         const response = await fetch(url);
         const data = await response.json();
-        if (data.error || data['Error Message']) { throw new Error(data.error || data['Error Message'] || 'API 限制'); }
-
-        if(data['Global Quote']){
+        if (data.error) {
+            let detail = data.details ? ` (${data.details})` : '';
+            throw new Error(`${data.error}${detail}`);
+        }
+        if (data['Error Message']) { throw new Error(data['Error Message']); }
+        if (data.Note) { throw new Error(data.Note); }
+        if(data['Global Quote'] && Object.keys(data['Global Quote']).length > 0){
           const q = data['Global Quote'];
           const price = parseFloat(q["05. price"]) || 0;
           const change = parseFloat(q["09. change"]) || 0;
           const changePercent = parseFloat(q["10. change percent"]?.replace('%','')) || 0;
           const c = change > 0 ? 'stock-up' : change < 0 ? 'stock-down' : 'stock-neutral';
           container.insertAdjacentHTML('beforeend', `<div class="stock-item"><div class="stock-info"><div class="stock-symbol">${symbol}</div><div class="stock-name">${q["01. symbol"]||symbol}</div></div><div class="stock-price-info"><div class="stock-price ${c}">$${price.toFixed(2)}</div><div class="stock-change ${c}">${change>0?'+':''}${change.toFixed(2)} (${changePercent>0?'+':''}${changePercent.toFixed(2)}%)</div></div></div>`);
-        } else { container.insertAdjacentHTML('beforeend', `<div class="stock-item">無法取得 ${symbol} 資訊 (API 限制)</div>`); }
-      }catch(e){ container.insertAdjacentHTML('beforeend', `<div class="stock-item">載入 ${symbol} 失敗: ${e.message}</div>`); }
+        } else { throw new Error('API 返回了空資料'); }
+      }catch(e){ 
+          console.error(`載入 ${symbol} 失敗:`, e);
+          container.insertAdjacentHTML('beforeend', `<div class="stock-item">載入 ${symbol} 失敗: ${e.message}</div>`); 
+      }
       await delay(1400); 
     }
   }
@@ -220,7 +222,6 @@ function delay(ms){return new Promise(r=>setTimeout(r,ms));}
 function addStock() {
   const input = document.getElementById('stockInput');
   if (!input) return;
-  
   let symbol=input.value.trim().toUpperCase();
   if(!symbol) return alert('請輸入股票代碼');
   if (stockCurrentMarket === 'tw') {
@@ -235,7 +236,162 @@ function addStock() {
   loadStocks();
 }
 
-// --- ★★★ 新架構的 JS 邏輯 (保持不變) ★★★ ---
+
+// --- ★★★ 1. (新) "工作" 分頁快捷列資料 (手動編輯區) ★★★ ---
+// 在這裡手動編輯您想要的快捷列
+// icon: 顯示在圖示上的文字 (建議 2 個字元)
+const workQuickLinks = [
+    { name: 'WACA', url: 'https://waca.com.tw', icon: 'GO' },
+    { name: 'ヤクルト本社', url: 'https://www.yakult.co.jp', icon: '本社' },
+    { name: '養楽多超人', url: 'https://www.yakult.com.tw', icon: '超人' },
+    { name: 'Cloudflare', url: 'https://dash.cloudflare.com/', icon: 'CF' },
+    { name: 'GitHub', url: 'https://github.com/', icon: 'GH' },
+    { name: 'Gemini', url: 'https://gemini.google.com/', icon: 'AI' }
+];
+
+// --- ★★★ 2. (新) "工作" 分頁 JS 邏輯 (V5 移植) ★★★ ---
+
+// 2a. 快捷列
+function renderWorkQuickLinks() {
+    const container = document.getElementById('workQuickLinksContainer');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    workQuickLinks.forEach(link => {
+        container.innerHTML += `
+            <a class="quick-link-item" onclick="openLink('${link.url}')" title="${link.name}">
+                <div class="quick-link-icon">${link.icon}</div>
+                <div class="quick-link-name">${link.name}</div>
+            </a>
+        `;
+    });
+}
+
+// 2b. 待辦事項 (V5)
+let todos = [];
+function loadTodos() {
+  const storedTodos = localStorage.getItem('portalTodos');
+  if (storedTodos) { todos = JSON.parse(storedTodos); }
+  renderTodos();
+}
+function saveTodos() {
+  localStorage.setItem('portalTodos', JSON.stringify(todos));
+}
+function renderTodos() {
+  const listElement = document.getElementById('todoList');
+  if (!listElement) return;
+  listElement.innerHTML = '';
+  if (todos.length === 0) {
+    listElement.innerHTML = '<li class="todo-item" style="color: #7a9794;">目前沒有待辦事項</li>';
+    return;
+  }
+  todos.forEach((todo, index) => {
+    const item = document.createElement('li');
+    item.className = `todo-item ${todo.completed ? 'completed' : ''}`;
+    item.innerHTML = `<span class="todo-item-text" data-index="${index}">${todo.text}</span><button class="todo-delete-btn" data-index="${index}">刪除</button>`;
+    listElement.appendChild(item);
+  });
+}
+function addTodo() {
+  const input = document.getElementById('todoInput');
+  const text = input.value.trim();
+  if (text) {
+    todos.push({ text: text, completed: false });
+    input.value = '';
+    saveTodos();
+    renderTodos();
+  }
+}
+function handleTodoClick(e) {
+  const target = e.target;
+  const index = target.dataset.index;
+  if (index === undefined) return;
+  if (target.classList.contains('todo-item-text')) {
+    todos[index].completed = !todos[index].completed;
+  } else if (target.classList.contains('todo-delete-btn')) {
+    todos.splice(index, 1);
+  }
+  saveTodos();
+  renderTodos();
+}
+
+// 2c. 快速筆記 (V5)
+function loadNotes() {
+  const notesArea = document.getElementById('quickNotesArea');
+  if (notesArea) {
+    notesArea.value = localStorage.getItem('portalQuickNotes') || '';
+  }
+}
+function saveNotes() {
+  const notesArea = document.getElementById('quickNotesArea');
+  const statusEl = document.getElementById('notesSavedStatus');
+  if (notesArea) {
+    localStorage.setItem('portalQuickNotes', notesArea.value);
+    if(statusEl) {
+        statusEl.textContent = '筆記已儲存。';
+        setTimeout(() => { statusEl.textContent = '所有變更已自動儲存'; }, 2000);
+    }
+  }
+}
+
+// 2d. 番茄鐘 (V5)
+let pomoInterval;
+let pomoTimeLeft = 25 * 60;
+let pomoMode = 'work';
+let isPomoRunning = false;
+function updatePomoDisplay() {
+  const pomoTimerDisplay = document.getElementById('pomodoroTimer');
+  if (!pomoTimerDisplay) return;
+  const minutes = Math.floor(pomoTimeLeft / 60);
+  const seconds = pomoTimeLeft % 60;
+  pomoTimerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+function startPausePomo() {
+  const pomoStartPauseBtn = document.getElementById('pomoStartPauseBtn');
+  if (isPomoRunning) {
+    clearInterval(pomoInterval);
+    isPomoRunning = false;
+    if (pomoStartPauseBtn) pomoStartPauseBtn.textContent = '繼續';
+  } else {
+    isPomoRunning = true;
+    if (pomoStartPauseBtn) pomoStartPauseBtn.textContent = '暫停';
+    pomoInterval = setInterval(() => {
+      pomoTimeLeft--;
+      updatePomoDisplay();
+      if (pomoTimeLeft < 0) {
+        clearInterval(pomoInterval);
+        const pomoStatusDisplay = document.getElementById('pomodoroStatus');
+        if (pomoMode === 'work') {
+          pomoMode = 'break';
+          pomoTimeLeft = 5 * 60;
+          if (pomoStatusDisplay) pomoStatusDisplay.textContent = '休息時間 ☕';
+          alert('工作時間結束！休息 5 分鐘。');
+        } else {
+          pomoMode = 'work';
+          pomoTimeLeft = 25 * 60;
+          if (pomoStatusDisplay) pomoStatusDisplay.textContent = '準備開始工作 🧑‍💻';
+          alert('休息結束！準備開始工作。');
+        }
+        isPomoRunning = false;
+        if (pomoStartPauseBtn) pomoStartPauseBtn.textContent = '開始';
+        updatePomoDisplay();
+      }
+    }, 1000);
+  }
+}
+function resetPomo() {
+  clearInterval(pomoInterval);
+  isPomoRunning = false;
+  pomoMode = 'work';
+  pomoTimeLeft = 25 * 60;
+  updatePomoDisplay();
+  const pomoStartPauseBtn = document.getElementById('pomoStartPauseBtn');
+  const pomoStatusDisplay = document.getElementById('pomodoroStatus');
+  if (pomoStartPauseBtn) pomoStartPauseBtn.textContent = '開始';
+  if (pomoStatusDisplay) pomoStatusDisplay.textContent = '準備開始工作 🧑‍💻';
+}
+
+// --- ★★★ 3. (修改) 新架構的 JS 邏輯 ★★★ ---
 
 document.addEventListener('DOMContentLoaded', function() {
     
@@ -252,8 +408,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 const html = await response.text();
                 contentArea.innerHTML = html;
                 
+                // [修改] 根據載入的頁面，執行不同的初始化
                 if (pageName === 'home') {
                     initHomePage();
+                } else if (pageName === 'work') {
+                    initWorkPage(); // ★ 呼叫新的 "工作" 頁面啟動函式
                 }
             }
         } catch (error) {
@@ -263,53 +422,80 @@ document.addEventListener('DOMContentLoaded', function() {
         contentArea.style.opacity = 1;
     }
 
+    // "首頁" 啟動函式 (V5 移植)
     function initHomePage() {
         updateDatetime();
         updateWeather('locationSelectorMain');
         loadStocks();
         loadNews();
-
         const homeContent = document.getElementById('content-area');
-        if (!homeContent) return; // 防呆
-
+        if (!homeContent) return; 
         const weatherSelector = homeContent.querySelector('#locationSelectorMain');
         if (weatherSelector) weatherSelector.onchange = () => updateWeather('locationSelectorMain');
-        
         const newsTw = homeContent.querySelector('#tab-tw');
         if (newsTw) newsTw.onclick = () => switchNewsTab('tw');
-        
         const newsJp = homeContent.querySelector('#tab-jp');
         if (newsJp) newsJp.onclick = () => switchNewsTab('jp');
-        
         const newsIntl = homeContent.querySelector('#tab-intl');
         if (newsIntl) newsIntl.onclick = () => switchNewsTab('intl');
-        
         const refreshNews = homeContent.querySelector('#refreshNewsBtn');
         if (refreshNews) refreshNews.onclick = loadNews;
-
         const stockTw = homeContent.querySelector('#stockTab_tw');
         if (stockTw) stockTw.onclick = () => switchStockMarket('tw');
-        
         const stockUs = homeContent.querySelector('#stockTab_us');
         if (stockUs) stockUs.onclick = () => switchStockMarket('us');
-        
         const addStockBtn = homeContent.querySelector('#stockAddBtn');
         if (addStockBtn) addStockBtn.onclick = addStock;
     }
+    
+    // ★ (新) "工作" 頁面啟動函式 ★
+    function initWorkPage() {
+        // 1. 啟動快捷列
+        renderWorkQuickLinks();
 
+        // 2. 啟動 V5 功能
+        loadTodos();
+        loadNotes();
+        updatePomoDisplay(); // 確保番茄鐘顯示正確時間
+        
+        // 3. 綁定 V5 按鈕事件
+        const workContent = document.getElementById('content-area');
+        if (!workContent) return;
+
+        // 綁定待辦事項
+        const addTodoBtn = workContent.querySelector('#addTodoBtn');
+        if (addTodoBtn) addTodoBtn.onclick = addTodo;
+        const todoInput = workContent.querySelector('#todoInput');
+        if (todoInput) todoInput.addEventListener('keypress', e => { if (e.key === 'Enter') addTodo(); });
+        const todoList = workContent.querySelector('#todoList');
+        if (todoList) todoList.addEventListener('click', handleTodoClick);
+
+        // 綁定快速筆記
+        const notesArea = workContent.querySelector('#quickNotesArea');
+        if (notesArea) notesArea.addEventListener('input', saveNotes); 
+
+        // 綁定番茄鐘
+        const pomoStartBtn = workContent.querySelector('#pomoStartPauseBtn');
+        if (pomoStartBtn) pomoStartBtn.onclick = startPausePomo;
+        const pomoResetBtn = workContent.querySelector('#pomoResetBtn');
+        if (pomoResetBtn) pomoResetBtn.onclick = resetPomo;
+    }
+
+    // 處理分頁點擊
     function handleTabClick(e) {
         e.preventDefault();
         const clickedTab = e.currentTarget;
         const pageName = clickedTab.getAttribute('data-tab');
-
         tabLinks.forEach(link => link.classList.remove('active'));
         clickedTab.classList.add('active');
         loadContent(pageName);
     }
 
+    // 初始綁定
     tabLinks.forEach(link => {
         link.addEventListener('click', handleTabClick);
     });
 
+    // 初始載入 "首頁"
     loadContent('home');
 });
