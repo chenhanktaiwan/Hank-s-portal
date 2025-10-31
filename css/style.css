@@ -1,6 +1,6 @@
 /* css/style.css */
 
-/* --- 1. CSS 基礎設定與莫蘭迪色票 --- */
+/* --- 1. 新架構 (莫蘭迪) 基礎樣式 --- */
 :root {
     --morandi-bg: #F0F3F4;       /* 柔和的背景色 (近白) */
     --morandi-primary: #6F9B94;  /* 主要藍綠色 (導覽列背景) */
@@ -14,19 +14,17 @@ body {
     margin: 0;
     background-color: var(--morandi-bg);
     color: var(--morandi-text);
-    /* 我們需要一些假內容高度來測試 sticky 效果 */
-    /* 您可以稍後移除，或者讓 pages 內容自然變長 */
     min-height: 1500px;
 }
 
-/* --- 2. CSS 導覽列 (Navbar) 樣式 --- */
+/* --- 2. 新架構 (莫蘭迪) 導覽列樣式 --- */
 .navbar {
-    position: sticky; /* 置頂導覽列的關鍵 */
+    position: sticky;
     top: 0;
     width: 100%;
     background-color: var(--morandi-primary);
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    z-index: 1000; /* 確保在最上層 */
+    z-index: 1000;
 }
 
 .nav-tabs {
@@ -34,7 +32,7 @@ body {
     list-style-type: none;
     margin: 0;
     padding: 0;
-    overflow-x: auto; /* 手機版可水平捲動 */
+    overflow-x: auto;
 }
 
 .tab-link {
@@ -45,7 +43,7 @@ body {
     cursor: pointer;
     transition: background-color 0.3s ease;
     display: block;
-    white-space: nowrap; /* 確保文字不換行 */
+    white-space: nowrap;
 }
 
 .tab-link:hover {
@@ -58,23 +56,281 @@ body {
     color: white;
 }
 
-/* --- 3. CSS 內容區塊 (Content) 樣式 --- */
-
+/* --- 3. 新架構 內容區塊樣式 --- */
 .content-area {
     margin: 10px;
     padding: 20px;
     border: 1px solid #ddd;
     border-radius: 5px;
     background-color: #ffffff;
-    
-    /* 這是切換內容時的淡入淡出動畫 */
     transition: opacity 0.3s ease-in-out;
 }
 
-/* 這些樣式會套用到從 pages/ 載入的 HTML 元素 */
+/* --- 4. ★★★ V5 移植樣式 (天氣, 新聞, 股票) ★★★ --- */
+/*
+ * 為了讓 pages/home.html 正常顯示，
+ * 我們從 V5 style.css 複製必要的樣式到這裡
+ */
+
+/* 確保 .content-area 內的 h2 不使用莫蘭迪樣式 (V5 沒有 h2) */
 .content-area h2 {
-    color: var(--morandi-primary);
-    border-bottom: 2px solid var(--morandi-secondary);
-    padding-bottom: 5px;
-    margin-top: 0; /* 移除預設的上邊界 */
+    color: initial;
+    border-bottom: none;
+    padding-bottom: 0;
+    margin-top: initial;
 }
+
+/* V5 天氣區塊 CSS */
+.header {
+  background:linear-gradient(135deg,#7ba8a3 0,#9dbfbb 100%);
+  padding: 20px 32px;
+  border-radius:24px;
+  color:white;
+  margin-bottom: 24px;
+  box-shadow:0 8px 30px rgba(123,168,163,0.25);
+}
+.header-top {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom: 0;
+  gap:20px;
+}
+.greeting-section {
+  font-weight:700;
+  font-size: 24px;
+  flex-shrink: 0;
+  min-width: 250px;
+}
+.datetime {margin-top:6px; font-weight:500; font-size:14px; opacity:0.9;}
+.location-selector {
+  background:rgba(255 255 255 / 26%);
+  border:2px solid rgba(255 255 255 / 38%);
+  border-radius:10px;
+  font-size:13px;
+  color:white;
+  padding: 5px 10px;
+  cursor:pointer;
+  backdrop-filter:blur(12px);
+  transition:background 0.3s,border 0.3s;
+  flex-shrink: 0;
+}
+.location-selector:hover, .location-selector:focus {
+  background:rgba(255 255 255 / 34%);
+  border-color:rgba(255 255 255 / 60%);
+  outline:none;
+}
+.weather-forecast-horizontal {
+  display:grid;
+  gap: 8px;
+  grid-template-columns:repeat(7,1fr);
+  flex: 1;
+  margin: 0 20px;
+}
+.weather-day-h {
+  background:rgba(255 255 255 / 23%);
+  border-radius:12px;
+  padding: 10px 5px;
+  border:2px solid rgba(255 255 255 / 12%);
+  text-align:center;
+  min-width: 0;
+}
+.weather-date-h {font-size:12px; font-weight:700; margin-bottom:4px;}
+.weather-emoji-h {font-size:28px; margin-bottom:2px; display:block; user-select:none;}
+.weather-temp-h {font-size:14px; font-weight:700;}
+.weather-rain-h {font-size:11px; margin-top:2px; color:#def1f0aa; opacity: 0.9;}
+.weather-desc-h {display: none;}
+.weather-loading {
+  grid-column:span 7;
+  text-align:center;
+  padding:22px 0;
+  color:white;
+  font-weight:700;
+}
+
+/* V5 卡片區 (新聞 & 股票) */
+.info-section {
+  display:flex;
+  gap: 20px;
+  flex-wrap:wrap;
+}
+.news-card {
+  flex:1;
+  min-width:400px;
+  max-width:720px;
+  background:white;
+  border-radius:20px;
+  box-shadow:0 8px 32px #a6b7b68e;
+  padding: 16px 20px;
+}
+.section-header {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:10px;
+  flex-wrap:wrap;
+  gap:10px;
+}
+.section-title {
+  display:flex;
+  gap:8px;
+  font-weight:700;
+  font-size: 18px;
+  color:#578f89;
+  align-items:center;
+}
+.section-icon {
+  background:linear-gradient(135deg,#7ba8a3,#9dbfbb);
+  border-radius:8px;
+  color:white;
+  width: 28px;
+  height: 28px;
+  display:grid;
+  place-items:center;
+  font-weight:900;
+  font-size: 15px;
+}
+.news-tabs { display:flex; gap: 8px; }
+.news-tab {
+  border-radius:10px;
+  background:#f3fbfb;
+  color:#578f89;
+  font-weight:600;
+  font-size: 13px;
+  padding: 5px 14px;
+  border:2px solid #cee2df;
+  cursor:pointer;
+  transition:background-color 0.3s ease,border-color 0.3s ease;
+  user-select:none;
+}
+.news-tab.active,.news-tab:hover {
+  background:#7ba8a3;
+  border-color:#7ba8a3;
+  color:white;
+}
+.refresh-btn {
+  font-weight:600;
+  background:#7ba8a3;
+  color:white;
+  border:none;
+  border-radius:10px;
+  padding: 5px 14px;
+  cursor:pointer;
+  font-size: 13px;
+  transition:background-color 0.3s ease;
+}
+.refresh-btn:disabled {opacity:0.5; cursor:not-allowed;}
+.news-list { list-style:none; max-height: 400px; overflow-y:auto; padding:0; }
+.news-item {
+  border-left:4px solid #86b4a9;
+  margin-bottom: 6px;
+  background:#f1f7f5;
+  border-radius:10px;
+  padding: 10px 14px;
+  font-weight:600;
+  color:#3a6259;
+  cursor:pointer;
+  transition:background 0.3s ease;
+}
+.news-item:hover { background:#9ac2b9; color:white; }
+.news-item-title { font-size: 14px; margin-bottom: 4px; }
+.news-item-meta {
+  margin-top:4px;
+  font-weight:400;
+  font-size:12px;
+  color:#58716b;
+  display:flex;
+  justify-content:space-between;
+}
+.news-loading {text-align:center;padding:20px;color:#7a9794;font-weight:600;}
+
+/* V5 股票卡 */
+.stock-card {
+  flex-basis:360px;
+  background:white;
+  border-radius:20px;
+  padding: 16px 20px;
+  box-shadow:0 8px 30px #a2b8b39e;
+  display:flex;
+  flex-direction:column;
+  gap: 12px;
+}
+.stock-tabs { display:flex; gap:10px; margin-top: 2px; }
+.stock-tab {
+  padding: 6px 20px;
+  border-radius:10px;
+  border:2px solid #a6cdc5;
+  background:#ccede9;
+  font-size: 15px;
+  font-weight:700;
+  color:#3e7e72;
+  cursor:pointer;
+  transition:all 0.28s ease;
+  user-select:none;
+}
+.stock-tab.active, .stock-tab:hover {
+  border-color:#7ba8a3;
+  background:#7ba8a3;
+  color:white;
+}
+.stock-search { display:flex; gap: 8px; }
+.stock-search-input {
+  padding: 10px 14px;
+  border-radius:12px;
+  font-size: 14px;
+  font-weight:600;
+  border:2px solid #a1d1c4;
+  background:#dbece8;
+  color:#376655;
+  flex:1;
+  transition:border-color 0.3s ease;
+}
+.stock-search-input:focus { outline:none; border-color:#7ba8a3; }
+.stock-add-btn {
+  background:#7ba8a3;
+  border-radius:12px;
+  padding: 10px 20px;
+  cursor:pointer;
+  font-size: 14px;
+  font-weight:700;
+  color:white;
+  border:none;
+  transition:background-color 0.3s ease;
+}
+.stock-add-btn:hover { background:#628775; }
+.stock-list {
+  max-height:400px;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+  gap: 8px;
+}
+.stock-item {
+  background:#cee3db;
+  border-radius:12px;
+  padding: 10px 14px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  cursor:pointer;
+  transition:background-color 0.3s ease;
+  font-weight:700;
+  color:#3c786c;
+}
+.stock-item:hover { background:#7ba8a3; color:white; }
+.stock-info {
+  display:flex;
+  flex-direction:column;
+  gap: 3px;
+  text-align:left;
+  min-width: 6rem;
+}
+.stock-symbol { font-size: 1.1rem; }
+.stock-name { font-weight:400; font-size: 0.8rem; color:#4a655c; }
+.stock-price-info { text-align:right; min-width:7rem; }
+.stock-price { font-size: 1.2rem; }
+.stock-change { font-size: 0.85rem; }
+.stock-up { color:#e2646a; }
+.stock-down { color:#2e7052; }
+.stock-neutral { color:#50766e; }
