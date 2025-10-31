@@ -1,26 +1,80 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>個人入口網站</title>
-    <link rel="stylesheet" href="css/style.css">
-</head>
-<body>
+/* css/style.css */
 
-    <nav class="navbar">
-        <ul class="nav-tabs">
-            <li><a class="tab-link active" data-tab="home">首頁</a></li>
-            <li><a class="tab-link" data-tab="news">新聞</a></li>
-            <li><a class="tab-link" data-tab="map">地圖</a></li>
-            <li><a class="tab-link" data-tab="personal">個人</a></li>
-            <li><a class="tab-link" data-tab="work">工作</a></li>
-            <li><a class="tab-link" data-tab="reserved">預留</a></li>
-        </ul>
-    </nav>
+/* --- 1. CSS 基礎設定與莫蘭迪色票 --- */
+:root {
+    --morandi-bg: #F0F3F4;       /* 柔和的背景色 (近白) */
+    --morandi-primary: #6F9B94;  /* 主要藍綠色 (導覽列背景) */
+    --morandi-secondary: #AEC9C1; /* 次要/點綴色 (懸停) */
+    --morandi-text: #4A4A4A;     /* 主要文字顏色 (深灰) */
+    --morandi-accent: #5A7D78;   /* 強調色 (目前分頁) */
+}
 
-    <main id="content-area" class="content-area"></main>
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    margin: 0;
+    background-color: var(--morandi-bg);
+    color: var(--morandi-text);
+    /* 我們需要一些假內容高度來測試 sticky 效果 */
+    /* 您可以稍後移除，或者讓 pages 內容自然變長 */
+    min-height: 1500px;
+}
 
-    <script src="js/main.js" defer></script>
-</body>
-</html>
+/* --- 2. CSS 導覽列 (Navbar) 樣式 --- */
+.navbar {
+    position: sticky; /* 置頂導覽列的關鍵 */
+    top: 0;
+    width: 100%;
+    background-color: var(--morandi-primary);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    z-index: 1000; /* 確保在最上層 */
+}
+
+.nav-tabs {
+    display: flex;
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    overflow-x: auto; /* 手機版可水平捲動 */
+}
+
+.tab-link {
+    padding: 14px 20px;
+    text-decoration: none;
+    color: var(--morandi-bg);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    display: block;
+    white-space: nowrap; /* 確保文字不換行 */
+}
+
+.tab-link:hover {
+    background-color: var(--morandi-secondary);
+    color: var(--morandi-text);
+}
+
+.tab-link.active {
+    background-color: var(--morandi-accent);
+    color: white;
+}
+
+/* --- 3. CSS 內容區塊 (Content) 樣式 --- */
+
+.content-area {
+    margin: 10px;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #ffffff;
+    
+    /* 這是切換內容時的淡入淡出動畫 */
+    transition: opacity 0.3s ease-in-out;
+}
+
+/* 這些樣式會套用到從 pages/ 載入的 HTML 元素 */
+.content-area h2 {
+    color: var(--morandi-primary);
+    border-bottom: 2px solid var(--morandi-secondary);
+    padding-bottom: 5px;
+    margin-top: 0; /* 移除預設的上邊界 */
+}
