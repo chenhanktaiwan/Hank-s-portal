@@ -1,4 +1,4 @@
-/* css/style.css */
+/* css/style.css (完整版) */
 
 /* --- 1. 新架構 (莫蘭迪) 基礎樣式 --- */
 :root {
@@ -334,3 +334,205 @@ body {
 .stock-up { color:#e2646a; }
 .stock-down { color:#2e7052; }
 .stock-neutral { color:#50766e; }
+
+/* V5 卡片共用樣式 (用於 "工作" 分頁) */
+.card {
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 8px 30px #a2b8b36e;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  /* 確保卡片之間有間距 */
+  margin-bottom: 20px; 
+}
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 16px;
+  color: #578f89;
+  border-bottom: 2px solid #e0ebea;
+  padding-bottom: 8px;
+}
+.card-icon {
+  font-size: 15px;
+}
+
+/* V5 "搜尋列" 共用樣式 (用於 "工作" 分頁) */
+.search-input {
+  flex:1;
+  font-size: 14px;
+  border-radius:12px;
+  padding: 10px 16px;
+  border:2px solid #a3bbb9;
+  transition:all 0.3s ease;
+  font-weight:400;
+}
+.search-input:focus {
+  outline:none;
+  border-color:#7ba8a3;
+  box-shadow:0 0 0 4px rgba(123 168 163 / 0.2);
+}
+.search-btn {
+  background-color:#7ba8a3;
+  border-radius:12px;
+  border:none;
+  color:white;
+  font-size: 14px;
+  font-weight:700;
+  cursor:pointer;
+  padding: 10px 20px;
+  transition:background-color 0.35s ease;
+}
+.search-btn:hover {background-color:#618577;}
+
+/* --- 5. ★ V5 移植樣式 ("工作" 分頁) ★ --- */
+.work-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+/* 待辦事項 */
+.todo-input-area {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.todo-input-area .search-input { flex: 1; }
+.todo-list {
+  list-style: none;
+  max-height: 300px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+}
+.todo-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: #f1f7f5;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-weight: 600;
+  color: #3a6259;
+}
+.todo-item-text {
+  flex: 1;
+  cursor: pointer;
+  user-select: none;
+  font-size: 15px;
+}
+.todo-item.completed .todo-item-text {
+  text-decoration: line-through;
+  opacity: 0.6;
+  color: #58716b;
+}
+.todo-delete-btn {
+  background: #e2646a;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+.todo-delete-btn:hover { background: #c95056; }
+
+/* 番茄鐘 */
+.pomodoro-timer-display {
+  font-size: 4rem;
+  font-weight: 700;
+  color: #578f89;
+  text-align: center;
+  margin: 10px 0;
+}
+.pomodoro-controls {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.pomodoro-controls .search-btn,
+.pomodoro-controls .refresh-btn {
+  padding: 10px 24px;
+  font-size: 15px;
+}
+.pomodoro-status {
+  text-align: center;
+  font-weight: 600;
+  color: #3e7e72;
+}
+
+/* 快速筆記 */
+.quick-notes {
+  width: 100%;
+  min-height: 300px;
+  border: 2px solid #a1d1c4;
+  background: #f1f7f5;
+  border-radius: 12px;
+  padding: 12px;
+  font-family: 'Microsoft JhengHei', 'PingFang TC', sans-serif;
+  font-size: 14px;
+  resize: vertical;
+  color: #376655;
+}
+.quick-notes:focus {
+  outline: none;
+  border-color: #7ba8a3;
+  box-shadow: 0 0 0 4px rgba(123, 168, 163, 0.2);
+}
+.notes-saved-status {
+  font-size: 12px;
+  color: #58716b;
+  text-align: right;
+  margin-top: 6px;
+  opacity: 0.8;
+}
+
+/* --- 6. ★ 新增的 "工作快捷列" 樣式 ★ --- */
+.quick-links-bar {
+  display: flex;
+  gap: 16px; /* 連結之間的間距 */
+  overflow-x: auto; /* 如果連結太多，允許水平捲動 */
+  padding: 10px 4px; /* 增加一點內距，避免捲動時貼齊邊緣 */
+}
+.quick-link-item {
+  display: flex;
+  flex-direction: column; /* 圖示在上，文字在下 */
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  text-decoration: none;
+  min-width: 80px; /* 確保每個項目有足夠寬度 */
+}
+.quick-link-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px; /* 圓角 */
+  display: grid;
+  place-items: center;
+  background: #cce3db;
+  color: #3e7e72;
+  font-weight: 700;
+  font-size: 20px;
+  /* 複製 V5 .tool-icon 的樣式 */
+  transition: background 0.3s, box-shadow 0.3s;
+}
+.quick-link-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #3a6259;
+}
+.quick-link-item:hover .quick-link-icon {
+  background: #b8d4cb;
+  box-shadow: 0 4px 12px #b8cac7;
+}
