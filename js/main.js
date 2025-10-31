@@ -1,12 +1,37 @@
-// js/main.js (已更新 - 2025/10/31 v4)
+// js/main.js (完整版 - 包含 V5 首頁所有功能)
 
 // --- ★★★ V5 移植過來的全域變數和輔助函式 ★★★ ---
 
 // V5 [保留] openLink 函式 (快捷列會用到)
 function openLink(url) {
     // [修改] 增加檢查，防止在編輯模式下點擊連結
-    if (isWorkLinkEditing) return; 
+    if (typeof isWorkLinkEditing !== 'undefined' && isWorkLinkEditing) return; 
     window.open(url, '_blank');
+}
+
+// V5 搜尋 (Google)
+function doGoogleSearch() {
+    const input = document.getElementById('searchInput');
+    if (!input) return;
+    const val = input.value.trim();
+    if (!val) return;
+    if (val.includes('.') && !val.includes(' ')) {
+        window.open(val.startsWith('http') ? val : 'https://' + val, '_blank');
+    } else {
+        window.open('https://www.google.com/search?q=' + encodeURIComponent(val), '_blank');
+    }
+}
+
+// V5 搜尋 (Maps)
+function searchGoogleMaps() {
+    const input = document.getElementById('mapSearchInput');
+    if (!input) return;
+    const query = input.value.trim();
+    if (!query) return;
+    const mapFrame = document.getElementById('mapFrame');
+    if (!mapFrame) return;
+    const newSrc = `http://googleusercontent.com/maps.google.com/9{encodeURIComponent(query)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+    mapFrame.src = newSrc;
 }
 
 // 天氣 (V5)
@@ -264,7 +289,6 @@ function loadWorkQuickLinks() {
     if (storedLinks) {
         workQuickLinks = JSON.parse(storedLinks);
     } else {
-        // 如果 localStorage 沒有，則使用預設值
         workQuickLinks = defaultWorkLinks;
         saveWorkQuickLinks();
     }
@@ -276,8 +300,6 @@ function renderWorkQuickLinks() {
     const container = document.getElementById('workQuickLinksContainer');
     if (!container) return;
     container.innerHTML = ''; // 清空
-
-    // 根據編輯狀態，切換容器的 class
     container.classList.toggle('editing', isWorkLinkEditing);
     
     workQuickLinks.forEach((link, index) => {
@@ -290,7 +312,6 @@ function renderWorkQuickLinks() {
         `;
     });
 
-    // 在編輯模式下，顯示 "新增" 按鈕
     if (isWorkLinkEditing) {
         container.innerHTML += `
             <a class="quick-link-item quick-link-add-btn" id="addNewLinkBtn" title="新增連結">
@@ -301,7 +322,7 @@ function renderWorkQuickLinks() {
     }
 }
 function toggleEditMode() {
-    isWorkLinkEditing = !isWorkLinkEditing; // 切換狀態
+    isWorkLinkEditing = !isWorkLinkEditing;
     const editBtn = document.getElementById('editLinksBtn');
     
     if (isWorkLinkEditing) {
@@ -310,9 +331,9 @@ function toggleEditMode() {
     } else {
         if(editBtn) editBtn.textContent = '編輯';
         if(editBtn) editBtn.classList.remove('editing');
-        hideLinkForm(); // 退出編輯模式時，隱藏表單
+        hideLinkForm();
     }
-    renderWorkQuickLinks(); // 重新渲染以顯示/隱藏 "X" 按鈕
+    renderWorkQuickLinks();
 }
 function showLinkForm(index = -1) {
     const form = document.getElementById('quickLinkFormArea');
@@ -325,26 +346,17 @@ function showLinkForm(index = -1) {
     if (!form || !title || !nameInput || !urlInput || !iconInput || !indexInput) return;
 
     if (index === -1) {
-        // 新增
         title.textContent = '新增連結';
         indexInput.value = '-1';
         nameInput.value = '';
         urlInput.value = '';
         iconInput.value = '';
-    } else {
-        // 編輯 (目前未啟用，但為未來保留)
-        // const link = workQuickLinks[index];
-        // title.textContent = '編輯連結';
-        // indexInput.value = index;
-        // nameInput.value = link.name;
-        // urlInput.value = link.url;
-        // iconInput.value = link.icon;
     }
-    form.style.display = 'flex'; // 顯示表單
+    form.style.display = 'flex';
 }
 function hideLinkForm() {
     const form = document.getElementById('quickLinkFormArea');
-    if (form) form.style.display = 'none'; // 隱藏表單
+    if (form) form.style.display = 'none';
 }
 function saveLink() {
     const nameInput = document.getElementById('quickLinkName');
@@ -354,7 +366,7 @@ function saveLink() {
 
     const name = nameInput.value.trim();
     let url = urlInput.value.trim();
-    const icon = iconInput.value.trim() || name.substring(0, 2); // 如果圖示為空，取名稱前兩字
+    const icon = iconInput.value.trim() || name.substring(0, 2);
     const index = parseInt(indexInput.value, 10);
 
     if (!name || !url) {
@@ -362,17 +374,12 @@ function saveLink() {
         return;
     }
     
-    // 自動為網址加上 https:// (如果需要)
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
         url = 'https://' + url;
     }
 
     if (index === -1) {
-        // 新增
         workQuickLinks.push({ name, url, icon });
-    } else {
-        // 編輯 (目前未啟用)
-        // workQuickLinks[index] = { name, url, icon };
     }
     
     saveWorkQuickLinks();
@@ -381,9 +388,9 @@ function saveLink() {
 }
 function deleteLink(index) {
     if (confirm(`確定要刪除 "${workQuickLinks[index].name}" 嗎？`)) {
-        workQuickLinks.splice(index, 1); // 從陣列中移除
+        workQuickLinks.splice(index, 1);
         saveWorkQuickLinks();
-        renderWorkQuickLinks(); // 重新渲染
+        renderWorkQuickLinks();
     }
 }
 
@@ -543,16 +550,21 @@ document.addEventListener('DOMContentLoaded', function() {
         contentArea.style.opacity = 1;
     }
 
-    // "首頁" 啟動函式 (V5 移植)
+    // (★ 修改 ★) "首頁" 啟動函式 (V5 移植 + 新增搜尋功能)
     function initHomePage() {
+        // 載入資料
         updateDatetime();
         updateWeather('locationSelectorMain');
         loadStocks();
         loadNews();
+        
+        // 綁定事件
         const homeContent = document.getElementById('content-area');
         if (!homeContent) return; 
+        
         const weatherSelector = homeContent.querySelector('#locationSelectorMain');
         if (weatherSelector) weatherSelector.onchange = () => updateWeather('locationSelectorMain');
+        
         const newsTw = homeContent.querySelector('#tab-tw');
         if (newsTw) newsTw.onclick = () => switchNewsTab('tw');
         const newsJp = homeContent.querySelector('#tab-jp');
@@ -561,40 +573,45 @@ document.addEventListener('DOMContentLoaded', function() {
         if (newsIntl) newsIntl.onclick = () => switchNewsTab('intl');
         const refreshNews = homeContent.querySelector('#refreshNewsBtn');
         if (refreshNews) refreshNews.onclick = loadNews;
+        
         const stockTw = homeContent.querySelector('#stockTab_tw');
         if (stockTw) stockTw.onclick = () => switchStockMarket('tw');
         const stockUs = homeContent.querySelector('#stockTab_us');
         if (stockUs) stockUs.onclick = () => switchStockMarket('us');
         const addStockBtn = homeContent.querySelector('#stockAddBtn');
         if (addStockBtn) addStockBtn.onclick = addStock;
+
+        // ★ 新增：綁定 Google 搜尋 ★
+        const searchBtn = homeContent.querySelector('#searchBtn');
+        if (searchBtn) searchBtn.onclick = doGoogleSearch;
+        const searchInput = homeContent.querySelector('#searchInput');
+        if (searchInput) searchInput.addEventListener('keypress', e => { if (e.key === 'Enter') doGoogleSearch(); });
+
+        // ★ 新增：綁定地圖搜尋 ★
+        const mapSearchBtn = homeContent.querySelector('#mapSearchBtn');
+        if (mapSearchBtn) mapSearchBtn.onclick = searchGoogleMaps;
+        const mapSearchInput = homeContent.querySelector('#mapSearchInput');
+        if (mapSearchInput) mapSearchInput.addEventListener('keypress', e => { if (e.key === 'Enter') searchGoogleMaps(); });
     }
     
-    // (修改) "工作" 頁面啟動函式
+    // "工作" 頁面啟動函式 (保持不變)
     function initWorkPage() {
-        // 1. 啟動快捷列
-        loadWorkQuickLinks(); // 從 localStorage 載入
-        renderWorkQuickLinks(); // 渲染到畫面上
-
-        // 2. 啟動 V5 功能
+        loadWorkQuickLinks();
+        renderWorkQuickLinks();
         loadTodos();
         loadNotes();
         updatePomoDisplay();
         
-        // 3. 綁定所有 "工作" 頁面的事件
         const workContent = document.getElementById('content-area');
         if (!workContent) return;
 
-        // 綁定快捷列按鈕
         const editLinksBtn = workContent.querySelector('#editLinksBtn');
         if (editLinksBtn) editLinksBtn.onclick = toggleEditMode;
-
         const saveLinkBtn = workContent.querySelector('#saveLinkBtn');
         if (saveLinkBtn) saveLinkBtn.onclick = saveLink;
-
         const cancelLinkBtn = workContent.querySelector('#cancelLinkBtn');
         if (cancelLinkBtn) cancelLinkBtn.onclick = hideLinkForm;
         
-        // 使用事件委派來處理動態產生的 "刪除" 和 "新增" 按鈕
         const linksContainer = workContent.querySelector('#workQuickLinksContainer');
         if (linksContainer) {
             linksContainer.onclick = function(e) {
@@ -602,18 +619,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 const addBtn = e.target.closest('#addNewLinkBtn');
                 
                 if (deleteBtn) {
-                    e.stopPropagation(); // 防止觸發 openLink
-                    e.preventDefault();
+                    e.stopPropagation(); e.preventDefault();
                     deleteLink(deleteBtn.dataset.index);
                 } else if (addBtn) {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    showLinkForm(-1); // 顯示 "新增" 表單
+                    e.stopPropagation(); e.preventDefault();
+                    showLinkForm(-1);
                 }
             };
         }
 
-        // 綁定待辦事項
         const addTodoBtn = workContent.querySelector('#addTodoBtn');
         if (addTodoBtn) addTodoBtn.onclick = addTodo;
         const todoInput = workContent.querySelector('#todoInput');
@@ -621,11 +635,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const todoList = workContent.querySelector('#todoList');
         if (todoList) todoList.addEventListener('click', handleTodoClick);
 
-        // 綁定快速筆記
         const notesArea = workContent.querySelector('#quickNotesArea');
         if (notesArea) notesArea.addEventListener('input', saveNotes); 
 
-        // 綁定番茄鐘
         const pomoStartBtn = workContent.querySelector('#pomoStartPauseBtn');
         if (pomoStartBtn) pomoStartBtn.onclick = startPausePomo;
         const pomoResetBtn = workContent.querySelector('#pomoResetBtn');
