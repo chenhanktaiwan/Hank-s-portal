@@ -1,4 +1,4 @@
-/* css/style.css (完整版 - 包含 V5 首頁所有樣式) */
+/* css/style.css (完整版 - 包含新分頁樣式) */
 
 /* --- 1. 新架構 (莫蘭迪) 基礎樣式 --- */
 :root {
@@ -738,3 +738,63 @@ body {
   cursor: pointer;
 }
 .bookmark-link:hover { color: #7ba8a3; }
+
+
+/* --- 9. ★ 擴充分頁："新聞" 頁面 ★ --- */
+.full-news-list {
+  list-style: none;
+  padding: 0;
+  max-height: none; /* 移除首頁的高度限制 */
+}
+.full-news-item {
+  border-bottom: 1px solid #eef3f3;
+  margin-bottom: 12px;
+  padding: 12px 8px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+.full-news-item:hover {
+  background-color: #f1f7f5;
+  border-radius: 8px;
+}
+.full-news-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #3a6259;
+  margin-bottom: 6px;
+}
+.full-news-meta {
+  font-size: 0.8rem;
+  color: #58716b;
+  margin-bottom: 8px;
+}
+.full-news-desc {
+  font-size: 0.9rem;
+  color: #4A4A4A;
+  line-height: 1.5;
+  /* Clamp to 3 lines */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;  
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- 10. ★ 擴充分頁："地圖" 頁面 ★ --- */
+.full-map-card {
+  /* 讓卡片填滿 */
+  margin: -10px; /* 抵銷 .content-area 的 padding */
+  height: calc(100vh - 120px); /* 100% 視窗高度 - 導覽列 - padding */
+  display: flex;
+  flex-direction: column;
+}
+.full-map-content {
+  flex: 1; /* 讓地圖內容填滿剩餘空間 */
+  margin-top: 12px;
+}
+#fullMapFrame {
+  border-radius: 12px;
+  border: 2px solid #cee2df;
+  width: 100%;
+  height: 100%; /* 填滿 .full-map-content */
+}
