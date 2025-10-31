@@ -1,7 +1,18 @@
-<h2>新聞</h2>
-<p>這裡是放置即時新聞或 RSS 摘要的地方。(內容來自 <strong>news.html</strong>)</p>
-<ul>
-    <li>新聞標題一：今日天氣晴朗。</li>
-    <li>新聞標題二：科技新知發表會。</li>
-    <li>新聞標題三：本地活動資訊。</li>
-</ul>
+<div class="card">
+  <div class="section-header">
+    <div class="section-title">
+      <div class="section-icon">📰</div>
+      完整新聞
+    </div>
+    <div class="news-tabs">
+      <button id="full-tab-tw" class="news-tab active">台灣</button>
+      <button id="full-tab-jp" class="news-tab">日本</button>
+      <button id="full-tab-intl" class="news-tab">國際</button>
+      <button id="full-refreshNewsBtn" class="refresh-btn">重新整理</button>
+    </div>
+  </div>
+  
+  <ul id="fullNewsList" class="full-news-list">
+     <li class="news-loading">載入新聞中...</li>
+  </ul>
+</div>
