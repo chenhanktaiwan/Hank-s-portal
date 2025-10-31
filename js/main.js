@@ -1,4 +1,4 @@
-// js/main.js
+// js/main.js (已更新 - 2025/10/31)
 
 // --- ★★★ V5 移植過來的全域變數和輔助函式 ★★★ ---
 
@@ -29,7 +29,6 @@ let stockCurrentMarket = 'tw';
 function updateDatetime() {
   const now = new Date();
   const targetMain = document.getElementById('datetime');
-  // 我們只更新首頁的日期 (V5 的 nav-datetime 在新架構不存在)
   if (targetMain) {
       targetMain.textContent = now.toLocaleDateString('zh-TW',{
         year:'numeric', month:'long', day:'numeric',weekday:'long',hour:'2-digit',minute:'2-digit'
@@ -37,10 +36,8 @@ function updateDatetime() {
   }
 }
 
-// V5 天氣函式
+// VG 天氣函式
 function updateWeather(sourceSelectorId){
-  // 導覽列的選擇器 (locationSelectorNav) 在新架構不存在
-  // 我們只使用首頁的 (locationSelectorMain)
   const selectorMain = document.getElementById('locationSelectorMain');
   const targetRow = document.getElementById('weatherRow');
   
@@ -72,14 +69,11 @@ function updateWeather(sourceSelectorId){
 // V5 新聞函式
 function switchNewsTab(tab){
   currentNewsTab = tab;
-  // 限制搜尋範圍在 content-area 內，避免抓到其他頁面的
   const contentArea = document.getElementById('content-area');
   if (!contentArea) return;
-  
   contentArea.querySelectorAll('.news-tab').forEach(btn => btn.classList.remove('active'));
   const activeTab = contentArea.querySelector('#tab-'+tab);
   if (activeTab) activeTab.classList.add('active');
-  
   loadNews();
 }
 function cleanCData(str) {
@@ -124,11 +118,14 @@ async function loadNews(){
   let success = false;
   for (const rssUrl of urlsToTry) {
       try {
-          const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`;
+          // ★★★ [修改] 呼叫我們自己的 /functions/get-news 代理 ★★★
+          const proxyUrl = `/functions/get-news?url=${encodeURIComponent(rssUrl)}`;
+          
           const res = await fetch(proxyUrl);
           if (!res.ok) throw new Error(`代理伺服器錯誤 (狀態: ${res.status})`);
-          const data = await res.json();
-          const xmlText = data.contents;
+          
+          // ★★★ [修改] 代理直接回傳 text，不再是 JSON ★★★
+          const xmlText = await res.text();
           const articles = parseRSS(xmlText);
           
           if (articles && articles.length > 0) {
@@ -162,11 +159,9 @@ function switchStockMarket(market){
   stockCurrentMarket=market;
   const contentArea = document.getElementById('content-area');
   if (!contentArea) return;
-  
   contentArea.querySelectorAll('.stock-tab').forEach(b => b.classList.remove('active'));
   const activeTab = contentArea.querySelector('#stockTab_' + market);
   if (activeTab) activeTab.classList.add('active');
-  
   loadStocks();
 }
 async function loadStocks(){
@@ -180,11 +175,12 @@ async function loadStocks(){
     container.innerHTML = '';
     for(const symbol of watchlist){
       try{
-        const twseUrl = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_${symbol}.tw&json=1&delay=0`;
-        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(twseUrl)}`;
+        // ★★★ [修改] 呼叫我們自己的 /functions/get-tw-stock 代理 ★★★
+        const proxyUrl = `/functions/get-tw-stock?symbol=${symbol}`;
+        
         const res = await fetch(proxyUrl);
-        const jsonData = await res.json();
-        const data = JSON.parse(jsonData.contents);
+        // ★★★ [修改] 代理直接回傳 JSON，不再需要 .contents ★★★
+        const data = await res.json(); 
         
         if(data.msgArray && data.msgArray.length > 0) {
           const st = data.msgArray[0];
@@ -195,14 +191,13 @@ async function loadStocks(){
           const c = change>0 ? 'stock-up' : change<0 ? 'stock-down' : 'stock-neutral';
           container.insertAdjacentHTML('beforeend', `<div class="stock-item"><div class="stock-info"><div class="stock-symbol">${symbol}</div><div class="stock-name">${st.n||symbol}</div></div><div class="stock-price-info"><div class="stock-price ${c}">$${price.toFixed(2)}</div><div class="stock-change ${c}">${change>0?'+':''}${change.toFixed(2)} (${changePercent>0?'+':''}${changePercent.toFixed(2)}%)</div></div></div>`);
         } else { container.insertAdjacentHTML('beforeend', `<div class="stock-item">無法取得 ${symbol} 資訊</div>`); }
-      }catch(e){ container.insertAdjacentHTML('beforeend', `<div class="stock-item">載入 ${symbol} 失敗</div>`); }
+      }catch(e){ container.insertAdjacentHTML('beforeend', `<div class="stock-item">載入 ${symbol} 失敗: ${e.message}</div>`); }
     }
   } else {
-    // ★★★ V5 美股 (使用 Cloudflare Function) ★★★
+    // 美股 (V5 - 保持不變, 仍使用 /functions/get-stock)
     container.innerHTML = '';
     for(const symbol of watchlist){
       try{
-        // 呼叫我們自己的代理
         const url = `/functions/get-stock?symbol=${symbol}`; 
         const response = await fetch(url);
         const data = await response.json();
@@ -217,7 +212,7 @@ async function loadStocks(){
           container.insertAdjacentHTML('beforeend', `<div class="stock-item"><div class="stock-info"><div class="stock-symbol">${symbol}</div><div class="stock-name">${q["01. symbol"]||symbol}</div></div><div class="stock-price-info"><div class="stock-price ${c}">$${price.toFixed(2)}</div><div class="stock-change ${c}">${change>0?'+':''}${change.toFixed(2)} (${changePercent>0?'+':''}${changePercent.toFixed(2)}%)</div></div></div>`);
         } else { container.insertAdjacentHTML('beforeend', `<div class="stock-item">無法取得 ${symbol} 資訊 (API 限制)</div>`); }
       }catch(e){ container.insertAdjacentHTML('beforeend', `<div class="stock-item">載入 ${symbol} 失敗: ${e.message}</div>`); }
-      await delay(1400); // 保留 V5 的延遲
+      await delay(1400); 
     }
   }
 }
@@ -240,16 +235,13 @@ function addStock() {
   loadStocks();
 }
 
-// --- ★★★ 新架構的 JS 邏輯 (已修改) ★★★ ---
+// --- ★★★ 新架構的 JS 邏輯 (保持不變) ★★★ ---
 
 document.addEventListener('DOMContentLoaded', function() {
     
     const tabLinks = document.querySelectorAll('.tab-link');
     const contentArea = document.getElementById('content-area');
 
-    /**
-     * 核心功能：載入內容 (★ 已修改 ★)
-     */
     async function loadContent(pageName) {
         contentArea.style.opacity = 0;
         try {
@@ -260,8 +252,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 const html = await response.text();
                 contentArea.innerHTML = html;
                 
-                // ★★★ 關鍵點 ★★★
-                // 如果載入的是首頁，就執行首頁的初始化
                 if (pageName === 'home') {
                     initHomePage();
                 }
@@ -273,25 +263,18 @@ document.addEventListener('DOMContentLoaded', function() {
         contentArea.style.opacity = 1;
     }
 
-    /**
-     * 新函式：初始化首頁 (V5 功能啟動點)
-     */
     function initHomePage() {
-        // 1. 載入 V5 資料
         updateDatetime();
         updateWeather('locationSelectorMain');
         loadStocks();
         loadNews();
 
-        // 2. 綁定 V5 按鈕事件 (因為是動態載入，必須在這裡重新綁定)
-        // (使用 #content-area 作為事件代理，確保元素存在)
         const homeContent = document.getElementById('content-area');
+        if (!homeContent) return; // 防呆
 
-        // 綁定天氣選擇器
         const weatherSelector = homeContent.querySelector('#locationSelectorMain');
         if (weatherSelector) weatherSelector.onchange = () => updateWeather('locationSelectorMain');
         
-        // 綁定新聞按鈕
         const newsTw = homeContent.querySelector('#tab-tw');
         if (newsTw) newsTw.onclick = () => switchNewsTab('tw');
         
@@ -304,7 +287,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const refreshNews = homeContent.querySelector('#refreshNewsBtn');
         if (refreshNews) refreshNews.onclick = loadNews;
 
-        // 綁定股票按鈕
         const stockTw = homeContent.querySelector('#stockTab_tw');
         if (stockTw) stockTw.onclick = () => switchStockMarket('tw');
         
@@ -315,9 +297,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (addStockBtn) addStockBtn.onclick = addStock;
     }
 
-    /**
-     * 處理分頁點擊事件 (新架構)
-     */
     function handleTabClick(e) {
         e.preventDefault();
         const clickedTab = e.currentTarget;
@@ -328,11 +307,9 @@ document.addEventListener('DOMContentLoaded', function() {
         loadContent(pageName);
     }
 
-    // 為所有莫蘭迪導覽列按鈕綁定事件
     tabLinks.forEach(link => {
         link.addEventListener('click', handleTabClick);
     });
 
-    // 初始載入 "首頁"
     loadContent('home');
 });
