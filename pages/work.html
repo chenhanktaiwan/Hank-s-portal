@@ -1,7 +1,47 @@
-<h2>工作</h2>
-<p>放置常用的工作連結或工具。(內容來自 <strong>work.html</strong>)</p>
-<ul>
-    <li><a href="#" target="_blank">公司內部系統 (EIP)</a></li>
-    <li><a href="#" target="_blank">專案管理工具 (Jira / Trello)</a></li>
-    <li><a href="#" target="_blank">公司信箱 (Webmail)</a></li>
-</ul>
+<div class="card" id="work-quick-links-card">
+    <div class="card-title">
+        <div class="card-icon">🛠️</div>
+        工作快捷列
+    </div>
+    <div id="workQuickLinksContainer" class="quick-links-bar">
+        </div>
+</div>
+
+<div class="work-grid">
+    
+    <div class="card">
+        <div class="card-title">
+            <div class="card-icon">✅</div>
+            待辦事項清單
+        </div>
+        <div class="todo-input-area">
+            <input type="text" id="todoInput" class="search-input" placeholder="新增任務...">
+            <button id="addTodoBtn" class="search-btn">新增</button>
+        </div>
+        <ul id="todoList" class="todo-list">
+            </ul>
+    </div>
+    
+    <div class="card">
+        <div class="card-title">
+            <div class="card-icon">🍅</div>
+            番茄鐘
+        </div>
+        <div class="pomodoro-timer-display" id="pomodoroTimer">25:00</div>
+        <div class="pomodoro-controls">
+            <button id="pomoStartPauseBtn" class="search-btn">開始</button>
+            <button id="pomoResetBtn" class="refresh-btn">重設</button>
+        </div>
+        <div class="pomodoro-status" id="pomodoroStatus">準備開始工作 🧑‍💻</div>
+    </div>
+    
+    <div class="card">
+        <div class="card-title">
+            <div class="card-icon">📝</div>
+            快速筆記
+        </div>
+        <textarea id="quickNotesArea" class="quick-notes" placeholder="在這裡輸入你的筆記..."></textarea>
+        <div id="notesSavedStatus" class="notes-saved-status">所有變更已自動儲存</div>
+    </div>
+
+</div>
