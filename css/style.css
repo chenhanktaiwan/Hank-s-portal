@@ -1,1 +1,84 @@
+/* css/style.css */
 
+/* --- 1. CSS 基礎設定與莫蘭迪色票 --- */
+:root {
+    --morandi-bg: #F0F3F4;
+    --morandi-primary: #6F9B94;
+    --morandi-secondary: #AEC9C1;
+    --morandi-text: #4A4A4A;
+    --morandi-accent: #5A7D78;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    margin: 0;
+    background-color: var(--morandi-bg);
+    color: var(--morandi-text);
+    /* 移除假高度，因為現在內容是動態的 */
+}
+
+/* --- 2. CSS 導覽列 (Navbar) 樣式 --- */
+.navbar {
+    position: sticky;
+    top: 0;
+    width: 100%;
+    background-color: var(--morandi-primary);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+}
+
+.nav-tabs {
+    display: flex;
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    overflow-x: auto;
+}
+
+.tab-link {
+    padding: 14px 20px;
+    text-decoration: none;
+    color: var(--morandi-bg);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    display: block;
+    white-space: nowrap;
+}
+
+.tab-link:hover {
+    background-color: var(--morandi-secondary);
+    color: var(--morandi-text);
+}
+
+.tab-link.active {
+    background-color: var(--morandi-accent);
+    color: white;
+}
+
+/* --- 3. CSS 內容區塊 (Content) 樣式 --- */
+
+.content-area {
+    padding: 20px;
+    /* * 這是新的動畫效果：
+     * 當我們用 JS 改變內容時，會先將透明度設為 0，
+     * 載入後再設為 1，這個 transition 會產生 0.3 秒的淡入效果。
+     */
+    transition: opacity 0.3s ease-in-out;
+}
+
+/* 內容區塊的標題樣式 (這些樣式會套用到載入的 HTML) */
+.content-area h2 {
+    color: var(--morandi-primary);
+    border-bottom: 2px solid var(--morandi-secondary);
+    padding-bottom: 5px;
+}
+
+/* 內容區塊的背景 (從 .tab-content 移過來的) */
+.content-area {
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    margin: 10px; /* 增加一點邊界 */
+    background-color: #ffffff;
+}
