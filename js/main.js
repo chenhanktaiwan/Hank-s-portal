@@ -1,9 +1,11 @@
-// js/main.js (已更新 - 2025/10/31 v3)
+// js/main.js (已更新 - 2025/10/31 v4)
 
 // --- ★★★ V5 移植過來的全域變數和輔助函式 ★★★ ---
 
 // V5 [保留] openLink 函式 (快捷列會用到)
 function openLink(url) {
+    // [修改] 增加檢查，防止在編輯模式下點擊連結
+    if (isWorkLinkEditing) return; 
     window.open(url, '_blank');
 }
 
@@ -237,10 +239,10 @@ function addStock() {
 }
 
 
-// --- ★★★ 1. (新) "工作" 分頁快捷列資料 (手動編輯區) ★★★ ---
-// 在這裡手動編輯您想要的快捷列
-// icon: 顯示在圖示上的文字 (建議 2 個字元)
-const workQuickLinks = [
+// --- ★★★ 1. (修改) "工作" 分頁快捷列資料 ★★★ ---
+
+// 預設連結 (僅在 localStorage 為空時使用)
+const defaultWorkLinks = [
     { name: 'WACA', url: 'https://waca.com.tw', icon: 'GO' },
     { name: 'ヤクルト本社', url: 'https://www.yakult.co.jp', icon: '本社' },
     { name: '養楽多超人', url: 'https://www.yakult.com.tw', icon: '超人' },
@@ -249,23 +251,142 @@ const workQuickLinks = [
     { name: 'Gemini', url: 'https://gemini.google.com/', icon: 'AI' }
 ];
 
-// --- ★★★ 2. (新) "工作" 分頁 JS 邏輯 (V5 移植) ★★★ ---
+// 全域變數，用於儲存連結和編輯狀態
+let workQuickLinks = [];
+let isWorkLinkEditing = false;
 
-// 2a. 快捷列
+
+// --- ★★★ 2. (修改) "工作" 分頁 JS 邏輯 (V5 移植 + 新增編輯功能) ★★★ ---
+
+// 2a. 快捷列 (新增 載入/儲存/渲染/編輯 功能)
+function loadWorkQuickLinks() {
+    const storedLinks = localStorage.getItem('portalWorkLinks');
+    if (storedLinks) {
+        workQuickLinks = JSON.parse(storedLinks);
+    } else {
+        // 如果 localStorage 沒有，則使用預設值
+        workQuickLinks = defaultWorkLinks;
+        saveWorkQuickLinks();
+    }
+}
+function saveWorkQuickLinks() {
+    localStorage.setItem('portalWorkLinks', JSON.stringify(workQuickLinks));
+}
 function renderWorkQuickLinks() {
     const container = document.getElementById('workQuickLinksContainer');
     if (!container) return;
-    container.innerHTML = '';
+    container.innerHTML = ''; // 清空
+
+    // 根據編輯狀態，切換容器的 class
+    container.classList.toggle('editing', isWorkLinkEditing);
     
-    workQuickLinks.forEach(link => {
+    workQuickLinks.forEach((link, index) => {
         container.innerHTML += `
             <a class="quick-link-item" onclick="openLink('${link.url}')" title="${link.name}">
+                ${isWorkLinkEditing ? `<button class="quick-link-delete-btn" data-index="${index}">×</button>` : ''}
                 <div class="quick-link-icon">${link.icon}</div>
                 <div class="quick-link-name">${link.name}</div>
             </a>
         `;
     });
+
+    // 在編輯模式下，顯示 "新增" 按鈕
+    if (isWorkLinkEditing) {
+        container.innerHTML += `
+            <a class="quick-link-item quick-link-add-btn" id="addNewLinkBtn" title="新增連結">
+                <div class="quick-link-icon">+</div>
+                <div class="quick-link-name">新增連結</div>
+            </a>
+        `;
+    }
 }
+function toggleEditMode() {
+    isWorkLinkEditing = !isWorkLinkEditing; // 切換狀態
+    const editBtn = document.getElementById('editLinksBtn');
+    
+    if (isWorkLinkEditing) {
+        if(editBtn) editBtn.textContent = '完成';
+        if(editBtn) editBtn.classList.add('editing');
+    } else {
+        if(editBtn) editBtn.textContent = '編輯';
+        if(editBtn) editBtn.classList.remove('editing');
+        hideLinkForm(); // 退出編輯模式時，隱藏表單
+    }
+    renderWorkQuickLinks(); // 重新渲染以顯示/隱藏 "X" 按鈕
+}
+function showLinkForm(index = -1) {
+    const form = document.getElementById('quickLinkFormArea');
+    const title = document.getElementById('quickFormTitle');
+    const nameInput = document.getElementById('quickLinkName');
+    const urlInput = document.getElementById('quickLinkUrl');
+    const iconInput = document.getElementById('quickLinkIcon');
+    const indexInput = document.getElementById('quickLinkIndex');
+    
+    if (!form || !title || !nameInput || !urlInput || !iconInput || !indexInput) return;
+
+    if (index === -1) {
+        // 新增
+        title.textContent = '新增連結';
+        indexInput.value = '-1';
+        nameInput.value = '';
+        urlInput.value = '';
+        iconInput.value = '';
+    } else {
+        // 編輯 (目前未啟用，但為未來保留)
+        // const link = workQuickLinks[index];
+        // title.textContent = '編輯連結';
+        // indexInput.value = index;
+        // nameInput.value = link.name;
+        // urlInput.value = link.url;
+        // iconInput.value = link.icon;
+    }
+    form.style.display = 'flex'; // 顯示表單
+}
+function hideLinkForm() {
+    const form = document.getElementById('quickLinkFormArea');
+    if (form) form.style.display = 'none'; // 隱藏表單
+}
+function saveLink() {
+    const nameInput = document.getElementById('quickLinkName');
+    const urlInput = document.getElementById('quickLinkUrl');
+    const iconInput = document.getElementById('quickLinkIcon');
+    const indexInput = document.getElementById('quickLinkIndex');
+
+    const name = nameInput.value.trim();
+    let url = urlInput.value.trim();
+    const icon = iconInput.value.trim() || name.substring(0, 2); // 如果圖示為空，取名稱前兩字
+    const index = parseInt(indexInput.value, 10);
+
+    if (!name || !url) {
+        alert('名稱和網址為必填項。');
+        return;
+    }
+    
+    // 自動為網址加上 https:// (如果需要)
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+    }
+
+    if (index === -1) {
+        // 新增
+        workQuickLinks.push({ name, url, icon });
+    } else {
+        // 編輯 (目前未啟用)
+        // workQuickLinks[index] = { name, url, icon };
+    }
+    
+    saveWorkQuickLinks();
+    renderWorkQuickLinks();
+    hideLinkForm();
+}
+function deleteLink(index) {
+    if (confirm(`確定要刪除 "${workQuickLinks[index].name}" 嗎？`)) {
+        workQuickLinks.splice(index, 1); // 從陣列中移除
+        saveWorkQuickLinks();
+        renderWorkQuickLinks(); // 重新渲染
+    }
+}
+
 
 // 2b. 待辦事項 (V5)
 let todos = [];
@@ -294,6 +415,7 @@ function renderTodos() {
 }
 function addTodo() {
   const input = document.getElementById('todoInput');
+  if (!input) return;
   const text = input.value.trim();
   if (text) {
     todos.push({ text: text, completed: false });
@@ -408,11 +530,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 const html = await response.text();
                 contentArea.innerHTML = html;
                 
-                // [修改] 根據載入的頁面，執行不同的初始化
                 if (pageName === 'home') {
                     initHomePage();
                 } else if (pageName === 'work') {
-                    initWorkPage(); // ★ 呼叫新的 "工作" 頁面啟動函式
+                    initWorkPage();
                 }
             }
         } catch (error) {
@@ -448,19 +569,49 @@ document.addEventListener('DOMContentLoaded', function() {
         if (addStockBtn) addStockBtn.onclick = addStock;
     }
     
-    // ★ (新) "工作" 頁面啟動函式 ★
+    // (修改) "工作" 頁面啟動函式
     function initWorkPage() {
         // 1. 啟動快捷列
-        renderWorkQuickLinks();
+        loadWorkQuickLinks(); // 從 localStorage 載入
+        renderWorkQuickLinks(); // 渲染到畫面上
 
         // 2. 啟動 V5 功能
         loadTodos();
         loadNotes();
-        updatePomoDisplay(); // 確保番茄鐘顯示正確時間
+        updatePomoDisplay();
         
-        // 3. 綁定 V5 按鈕事件
+        // 3. 綁定所有 "工作" 頁面的事件
         const workContent = document.getElementById('content-area');
         if (!workContent) return;
+
+        // 綁定快捷列按鈕
+        const editLinksBtn = workContent.querySelector('#editLinksBtn');
+        if (editLinksBtn) editLinksBtn.onclick = toggleEditMode;
+
+        const saveLinkBtn = workContent.querySelector('#saveLinkBtn');
+        if (saveLinkBtn) saveLinkBtn.onclick = saveLink;
+
+        const cancelLinkBtn = workContent.querySelector('#cancelLinkBtn');
+        if (cancelLinkBtn) cancelLinkBtn.onclick = hideLinkForm;
+        
+        // 使用事件委派來處理動態產生的 "刪除" 和 "新增" 按鈕
+        const linksContainer = workContent.querySelector('#workQuickLinksContainer');
+        if (linksContainer) {
+            linksContainer.onclick = function(e) {
+                const deleteBtn = e.target.closest('.quick-link-delete-btn');
+                const addBtn = e.target.closest('#addNewLinkBtn');
+                
+                if (deleteBtn) {
+                    e.stopPropagation(); // 防止觸發 openLink
+                    e.preventDefault();
+                    deleteLink(deleteBtn.dataset.index);
+                } else if (addBtn) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    showLinkForm(-1); // 顯示 "新增" 表單
+                }
+            };
+        }
 
         // 綁定待辦事項
         const addTodoBtn = workContent.querySelector('#addTodoBtn');
