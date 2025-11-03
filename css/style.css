@@ -1,4 +1,4 @@
-/* css/style.css (完整版 - 包含新分頁樣式) */
+/* css/style.css (完整版 - 包含導覽列天氣) */
 
 /* --- 1. 新架構 (莫蘭迪) 基礎樣式 --- */
 :root {
@@ -25,6 +25,13 @@ body {
     background-color: var(--morandi-primary);
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     z-index: 1000;
+    
+    /* ★ [修改] ★ */
+    /* 改為 Flex 佈局以容納右側資訊 */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 10px; /* 增加一點左右內距 */
 }
 
 .nav-tabs {
@@ -32,7 +39,9 @@ body {
     list-style-type: none;
     margin: 0;
     padding: 0;
-    overflow-x: auto;
+    overflow-x: auto; /* 分頁過多時可捲動 */
+    flex-shrink: 1; /* 允許分頁收縮 */
+    min-width: 0; /* 修正 flex 溢位 */
 }
 
 .tab-link {
@@ -149,7 +158,7 @@ body {
   display:flex;
   gap: 20px;
   flex-wrap:wrap;
-  margin-bottom: 20px; /* ★ 新增間距 */
+  margin-bottom: 20px; 
 }
 .news-card {
   flex:1;
@@ -341,7 +350,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  /* 確保卡片之間有間距 */
   margin-bottom: 20px; 
 }
 .card-title {
@@ -498,30 +506,29 @@ body {
 /* --- 6. ★ 新增的 "工作快捷列" 樣式 ★ --- */
 .quick-links-bar {
   display: flex;
-  gap: 16px; /* 連結之間的間距 */
-  overflow-x: auto; /* 如果連結太多，允許水平捲動 */
-  padding: 10px 4px; /* 增加一點內距，避免捲動時貼齊邊緣 */
+  gap: 16px; 
+  overflow-x: auto; 
+  padding: 10px 4px;
 }
 .quick-link-item {
   display: flex;
-  flex-direction: column; /* 圖示在上，文字在下 */
+  flex-direction: column; 
   align-items: center;
   gap: 8px;
   cursor: pointer;
   text-decoration: none;
-  min-width: 80px; /* 確保每個項目有足夠寬度 */
+  min-width: 80px;
 }
 .quick-link-icon {
   width: 52px;
   height: 52px;
-  border-radius: 12px; /* 圓角 */
+  border-radius: 12px;
   display: grid;
   place-items: center;
   background: #cce3db;
   color: #3e7e72;
   font-weight: 700;
   font-size: 20px;
-  /* 複製 V5 .tool-icon 的樣式 */
   transition: background 0.3s, box-shadow 0.3s;
 }
 .quick-link-name {
@@ -546,26 +553,24 @@ body {
     padding: 2px 10px;
     border-radius: 8px;
     cursor: pointer;
-    margin-left: auto; /* 將按鈕推到最右邊 */
+    margin-left: auto; 
     transition: background 0.3s, color 0.3s;
 }
 .quick-link-edit-btn:hover { background: #b8d4cb; }
 
-/* "編輯中" 狀態的按鈕 (變紅色) */
 .quick-link-edit-btn.editing {
     background: #e2646a;
     color: white;
 }
 
-/* 顯示在圖示右上角的 "X" 刪除按鈕 */
 .quick-link-item {
-    position: relative; /* 讓刪除按鈕可以絕對定位 */
+    position: relative; 
 }
 .quick-link-delete-btn {
-    display: none; /* 預設隱藏 */
+    display: none; 
     position: absolute;
     top: -8px;
-    right: -2px; /* 調整 X 的位置 */
+    right: -2px;
     background: #e2646a;
     color: white;
     border: 2px solid white;
@@ -575,18 +580,16 @@ body {
     font-weight: 700;
     cursor: pointer;
     font-size: 14px;
-    line-height: 20px; /* 讓 "X" 垂直置中 */
+    line-height: 20px; 
     text-align: center;
     z-index: 10;
     box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
-/* 當 .quick-links-bar 處於 .editing 狀態時，顯示 "X" 按鈕 */
 .quick-links-bar.editing .quick-link-delete-btn {
     display: block;
 }
 
-/* 新增連結的 "+" 按鈕樣式 */
 .quick-link-add-btn .quick-link-icon {
     background: #eef3f3;
     color: #7a9794;
@@ -597,7 +600,6 @@ body {
     box-shadow: none;
 }
 
-/* 用於新增/編輯的表單 */
 .quick-link-form {
     border-top: 2px solid #e0ebea;
     padding-top: 16px;
@@ -620,15 +622,12 @@ body {
 }
 
 /* --- 8. ★ V5 移植：首頁 搜尋、地圖、快捷區塊 ★ --- */
-
-/* V5 搜尋列 */
 .search-section {
   display:flex;
   gap:10px;
   margin-bottom: 20px;
 }
 
-/* V5 地圖卡片 */
 .map-card-full {
   background: white;
   border-radius: 20px;
@@ -657,7 +656,6 @@ body {
   height: 350px;
 }
 
-/* V5 快捷常用區塊 */
 .main-content {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -665,7 +663,6 @@ body {
   margin-top: 20px;
 }
 
-/* 快捷區塊 - 專案 */
 .project-item {
   background: #f1f7f5;
   border-radius: 12px;
@@ -680,7 +677,6 @@ body {
 .project-name { font-weight: 700; color: #3a6259; margin-bottom: 4px; font-size: 15px; }
 .project-desc { font-size: 13px; color: #58716b; }
 
-/* 快捷區塊 - 常用工具 */
 .tool-item {
   display: flex;
   align-items: center;
@@ -706,7 +702,6 @@ body {
 .tool-name { font-weight: 700; color: #3a6259; font-size: 15px; }
 .tool-url { font-size: 13px; color: #58716b; }
 
-/* 快捷區塊 - 快速連結 */
 .link-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -723,7 +718,6 @@ body {
 }
 .quick-link:hover { background: #e6f0ee; }
 
-/* 快捷區塊 - 書籤 */
 .bookmark-section { display: flex; flex-direction: column; gap: 8px; }
 .bookmark-category {
   font-weight: 700;
@@ -744,7 +738,7 @@ body {
 .full-news-list {
   list-style: none;
   padding: 0;
-  max-height: none; /* 移除首頁的高度限制 */
+  max-height: none; 
 }
 .full-news-item {
   border-bottom: 1px solid #eef3f3;
@@ -772,7 +766,6 @@ body {
   font-size: 0.9rem;
   color: #4A4A4A;
   line-height: 1.5;
-  /* Clamp to 3 lines */
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;  
@@ -782,19 +775,41 @@ body {
 
 /* --- 10. ★ 擴充分頁："地圖" 頁面 ★ --- */
 .full-map-card {
-  /* 讓卡片填滿 */
-  margin: -10px; /* 抵銷 .content-area 的 padding */
-  height: calc(100vh - 120px); /* 100% 視窗高度 - 導覽列 - padding */
+  margin: -10px; 
+  height: calc(100vh - 120px); 
   display: flex;
   flex-direction: column;
 }
 .full-map-content {
-  flex: 1; /* 讓地圖內容填滿剩餘空間 */
+  flex: 1; 
   margin-top: 12px;
 }
 #fullMapFrame {
   border-radius: 12px;
   border: 2px solid #cee2df;
   width: 100%;
-  height: 100%; /* 填滿 .full-map-content */
+  height: 100%; 
+}
+
+/* --- 11. ★ 新增：導覽列右側資訊 ★ --- */
+.nav-info-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding-right: 10px; /* 確保與邊緣有間距 */
+    flex-shrink: 0; /* 防止被壓縮 */
+}
+.nav-weather,
+.nav-datetime {
+    color: var(--morandi-bg);
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap; /* 防止換行 */
+}
+.nav-weather {
+    font-weight: 700; /* 讓溫度顯眼一點 */
+}
+.nav-weather-emoji {
+    font-size: 16px;
+    margin-right: 4px;
 }
