@@ -29,8 +29,8 @@ function searchGoogleMaps() {
     if (!query) return;
     const mapFrame = document.getElementById('mapFrame');
     if (!mapFrame) return;
-    // ★ [關鍵修改] http -> https ★
-    const newSrc = `https://googleusercontent.com/maps.google.com/14{encodeURIComponent(query)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+    // ★ [關鍵修改] 改用 https 和標準 embed 網址 ★
+    const newSrc = `https://www.google.com/maps?output=embed&q=${encodeURIComponent(query)}`;
     mapFrame.src = newSrc;
 }
 
@@ -601,8 +601,8 @@ function searchFullGoogleMaps() {
     if (!query) return;
     const mapFrame = document.getElementById('fullMapFrame');
     if (!mapFrame) return;
-    // ★ [關鍵修改] http -> https ★
-    const newSrc = `https://googleusercontent.com/maps.google.com/15{encodeURIComponent(query)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+    // ★ [關鍵修改] 改用 https 和標準 embed 網址 ★
+    const newSrc = `https://www.google.com/maps?output=embed&q=${encodeURIComponent(query)}`;
     mapFrame.src = newSrc;
 }
 
