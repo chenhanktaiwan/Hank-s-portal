@@ -1,4 +1,4 @@
-// js/main.js (完整版 - 修正股票與新聞代理)
+// js/main.js (完整版 - 包含導覽列天氣)
 
 // --- ★★★ V5 移植過來的全域變數和輔助函式 ★★★ ---
 
@@ -29,7 +29,7 @@ function searchGoogleMaps() {
     if (!query) return;
     const mapFrame = document.getElementById('mapFrame');
     if (!mapFrame) return;
-    const newSrc = `googleusercontent.com/maps.google.com/{encodeURIComponent(query)}`;
+    const newSrc = `https://googleusercontent.com/maps.google.com/...{encodeURIComponent(query)}`;
     mapFrame.src = newSrc;
 }
 
@@ -56,18 +56,29 @@ const stockWatchlist = {
 };
 let stockCurrentMarket = 'tw';
 
-// V5 日期函式
+// V5 日期函式 (★ 修改 ★)
 function updateDatetime() {
   const now = new Date();
+  
+  // 1. 更新首頁的大日期 (如果存在)
   const targetMain = document.getElementById('datetime');
   if (targetMain) {
       targetMain.textContent = now.toLocaleDateString('zh-TW',{
         year:'numeric', month:'long', day:'numeric',weekday:'long',hour:'2-digit',minute:'2-digit'
       });
   }
+  
+  // 2. ★ [新增] ★ 更新導覽列的小日期
+  const targetNav = document.getElementById('nav-datetime');
+  if (targetNav) {
+      // 格式： 10/31 (二) 15:30
+      const dateStr = now.toLocaleDateString('zh-TW', { month:'2-digit', day:'2-digit', weekday:'short' });
+      const timeStr = now.toLocaleTimeString('zh-TW', { hour:'2-digit', minute:'2-digit' });
+      targetNav.textContent = `${dateStr} ${timeStr}`;
+  }
 }
 
-// V5 天氣函式
+// V5 天氣函式 (首頁小工具)
 function updateWeather(sourceSelectorId){
   const selectorMain = document.getElementById('locationSelectorMain');
   const targetRow = document.getElementById('weatherRow');
@@ -145,14 +156,10 @@ async function loadNews(){
   let success = false;
   for (const rssUrl of urlsToTry) {
       try {
-          // ★ [修改] ★
-          // 棄用 /functions/get-news，改用新的公開代理
-          const proxyUrl = `https://cors.eu.org/${rssUrl}`;
-          
+          const proxyUrl = `/functions/get-news?url=${encodeURIComponent(rssUrl)}`;
           const res = await fetch(proxyUrl);
           const xmlText = await res.text();
-          if (!res.ok) { throw new Error(`代理伺服器錯誤: ${res.status}`); }
-          
+          if (!res.ok) { throw new Error(xmlText); }
           const articles = parseRSS(xmlText); // 使用 5 篇的 parser
           if (articles && articles.length > 0) {
               list.innerHTML = '';
@@ -200,24 +207,14 @@ async function loadStocks(){
   if (!container) return;
   const watchlist = stockWatchlist[stockCurrentMarket];
   container.innerHTML = '<div class="stocks-loading">載入股票資料中...</div>';
-  
   if(stockCurrentMarket==='tw'){
     container.innerHTML = '';
     for(const symbol of watchlist){
       try{
-        // ★ [修改] ★
-        // 棄用 /functions/get-tw-stock，改用新的公開代理
-        const twseUrl = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_${symbol}.tw&json=1&delay=0&t=${new Date().getTime()}`;
-        const proxyUrl = `https://cors.eu.org/${twseUrl}`;
-        
+        const proxyUrl = `/functions/get-tw-stock?symbol=${symbol}`;
         const res = await fetch(proxyUrl);
-        if (!res.ok) throw new Error(`代理伺服器錯誤: ${res.status}`);
-        
-        // ★ [修改] ★
-        // 增加 try-catch 來防止 'Unexpected token' 崩潰
-        const text = await res.text();
-        const data = JSON.parse(text); 
-        
+        const data = await res.json();
+        if (data.error) { throw new Error(data.error); }
         if(data.msgArray && data.msgArray.length > 0) {
           const st = data.msgArray[0];
           const price = parseFloat(st.z) || 0;
@@ -227,41 +224,21 @@ async function loadStocks(){
           const c = change>0 ? 'stock-up' : change<0 ? 'stock-down' : 'stock-neutral';
           container.insertAdjacentHTML('beforeend', `<div class="stock-item"><div class="stock-info"><div class="stock-symbol">${symbol}</div><div class="stock-name">${st.n||symbol}</div></div><div class="stock-price-info"><div class="stock-price ${c}">$${price.toFixed(2)}</div><div class="stock-change ${c}">${change>0?'+':''}${change.toFixed(2)} (${changePercent>0?'+':''}${changePercent.toFixed(2)}%)</div></div></div>`);
         } else { container.insertAdjacentHTML('beforeend', `<div class="stock-item">無法取得 ${symbol} 資訊</div>`); }
-      }catch(e){ 
-          // e.message 可能是 "Unexpected token '<'"
-          container.insertAdjacentHTML('beforeend', `<div class="stock-item">載入 ${symbol} 失敗: ${e.message}</div>`); 
-      }
+      }catch(e){ container.insertAdjacentHTML('beforeend', `<div class="stock-item">載入 ${symbol} 失敗: ${e.message}</div>`); }
     }
   } else {
-    // 美股 (使用 /functions/get-stock)
     container.innerHTML = '';
     for(const symbol of watchlist){
       try{
-        // ★ [修改] ★
-        // 保持使用 function，因為需要 API Key
         const url = `/functions/get-stock?symbol=${symbol}`; 
         const response = await fetch(url);
-
-        // ★ [關鍵修復] ★
-        // 在 .json() 之前檢查 response.ok
-        if (!response.ok) {
-            // 如果 Function 崩潰 (500) 或找不到 (404)
-            throw new Error(`伺服器功能錯誤: ${response.status}`);
-        }
-        
-        const data = await response.json(); // 現在解析是安全的
-
-        if (data.error) { // 這是 Function 回傳的 *已知* 錯誤
+        const data = await response.json();
+        if (data.error) {
             let detail = data.details ? ` (${data.details})` : '';
             throw new Error(`${data.error}${detail}`);
         }
-        if (data['Error Message']) { // 這是 Alpha Vantage 的 API 錯誤
-            throw new Error(data['Error Message']);
-        }
-        if (data.Note) { // 這是 Alpha Vantage 的 API 限制
-            throw new Error(data.Note); 
-        }
-
+        if (data['Error Message']) { throw new Error(data['Error Message']); }
+        if (data.Note) { throw new Error(data.Note); }
         if(data['Global Quote'] && Object.keys(data['Global Quote']).length > 0){
           const q = data['Global Quote'];
           const price = parseFloat(q["05. price"]) || 0;
@@ -272,7 +249,6 @@ async function loadStocks(){
         } else { throw new Error('API 返回了空資料'); }
       }catch(e){ 
           console.error(`載入 ${symbol} 失敗:`, e);
-          // e.message 現在會是 "伺服器功能錯誤: 500" 或 "API Key 未在伺服器上設定"
           container.insertAdjacentHTML('beforeend', `<div class="stock-item">載入 ${symbol} 失敗: ${e.message}</div>`); 
       }
       await delay(1400); 
@@ -580,14 +556,10 @@ async function loadFullNews() {
     let success = false;
     for (const rssUrl of urlsToTry) {
         try {
-            // ★ [修改] ★
-            // 棄用 /functions/get-news，改用新的公開代理
-            const proxyUrl = `https://cors.eu.org/${rssUrl}`;
-            
+            const proxyUrl = `/functions/get-news?url=${encodeURIComponent(rssUrl)}`;
             const res = await fetch(proxyUrl);
             const xmlText = await res.text();
-            if (!res.ok) { throw new Error(`代理伺服器錯誤: ${res.status}`); }
-            
+            if (!res.ok) { throw new Error(xmlText); }
             const articles = parseFullRSS(xmlText); 
             if (articles && articles.length > 0) {
                 list.innerHTML = '';
@@ -639,12 +611,38 @@ function searchFullGoogleMaps() {
     if (!query) return;
     const mapFrame = document.getElementById('fullMapFrame');
     if (!mapFrame) return;
-    const newSrc = `https://googleusercontent.com/maps.google.com/...{encodeURIComponent(query)}`;
+    const newSrc = `https://www.google.com/maps/embed/v1/place?key=...{encodeURIComponent(query)}`;
     mapFrame.src = newSrc;
 }
 
+// --- ★★★ (新) 導覽列天氣 JS 邏輯 ★★★ ---
+async function loadNavWeather() {
+    const targetNav = document.getElementById('nav-weather');
+    if (!targetNav) return;
 
-// --- ★★★ 新架構的 JS 核心邏輯 ★★★ ---
+    // 使用固定的台北座標
+    const lat = '25.0330';
+    const lon = '121.5654';
+
+    try {
+        const response = await fetch(`https.api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&timezone=Asia/Taipei`);
+        const data = await response.json();
+        
+        if (data && data.current_weather) {
+            const cw = data.current_weather;
+            const w = weatherCodes[cw.weathercode] || { emoji:'🌥️' }; // 從 V5 移植的 weatherCodes
+            targetNav.innerHTML = `<span class="nav-weather-emoji">${w.emoji}</span> ${Math.round(cw.temperature)}°C`;
+        } else {
+            targetNav.textContent = '天氣 N/A';
+        }
+    } catch (e) {
+        console.error("導覽列天氣載入失敗:", e);
+        targetNav.textContent = '天氣失敗';
+    }
+}
+
+
+// --- ★★★ 新架構的 JS 核心邏輯 (★ 修改 ★) ★★★ ---
 document.addEventListener('DOMContentLoaded', function() {
     
     const tabLinks = document.querySelectorAll('.tab-link');
@@ -679,7 +677,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // "首頁" 啟動函式
     function initHomePage() {
-        updateDatetime();
+        updateDatetime(); // 確保首頁日期也被更新
         updateWeather('locationSelectorMain');
         loadStocks();
         loadNews();
@@ -806,6 +804,12 @@ document.addEventListener('DOMContentLoaded', function() {
     tabLinks.forEach(link => {
         link.addEventListener('click', handleTabClick);
     });
+
+    // ★ [新增] ★ 
+    // 立即啟動全域功能 (導覽列天氣/時間)
+    loadNavWeather();
+    updateDatetime();
+    setInterval(updateDatetime, 30000); // 每 30 秒更新一次時間
 
     // 初始載入 "首頁"
     loadContent('home');
