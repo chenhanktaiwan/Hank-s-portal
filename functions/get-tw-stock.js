@@ -1,6 +1,6 @@
 /*
  * 檔案路徑: /functions/get-tw-stock.js (★ 更新版)
- * 智慧檢查 Content-Type，防止解析 HTML 時崩潰
+ * 強化標頭 (Headers) 並智慧檢查 Content-Type
  */
 export async function onRequest(context) {
   const { searchParams } = new URL(context.request.url);
@@ -8,8 +8,7 @@ export async function onRequest(context) {
 
   if (!symbol) {
     return new Response(JSON.stringify({ error: 'Missing symbol' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
+      status: 400, headers: { 'Content-Type': 'application/json' },
     });
   }
 
@@ -19,42 +18,39 @@ export async function onRequest(context) {
   try {
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
+        // ★ [修改] 強化模擬瀏覽器標頭
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.60 Safari/537.36',
         'Accept': 'application/json, text/javascript, */*; q=0.01',
-        'Referer': 'https://mis.twse.com.tw/stock/index.jsp'
+        'Accept-Language': 'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Referer': 'https://mis.twse.com.tw/stock/index.jsp',
+        'X-Requested-With': 'XMLHttpRequest'
       }
     });
 
     if (!response.ok) {
-        throw new Error(`TWSE API error: ${response.statusText}`);
+        throw new Error(`TWSE API 伺服器錯誤: ${response.statusText}`);
     }
 
-    // ★ [關鍵修改] ★
-    // 檢查回傳的是否為 JSON
     const contentType = response.headers.get('content-type') || '';
     if (contentType.includes('application/json')) {
         const data = await response.json();
-        // 成功：回傳 JSON
         return new Response(JSON.stringify(data), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
+          status: 200, headers: { 'Content-Type': 'application/json' },
         });
     } else {
-        // 失敗：回傳的是 HTML (被阻擋或錯誤)
+        // 失敗：回傳的是 HTML (被阻擋)
         const errorText = await response.text();
         return new Response(JSON.stringify({ 
-            error: 'TWSE API 錯誤 (回傳非 JSON)',
+            error: '台股 API 錯誤 (回傳非 JSON)',
             details: errorText.substring(0, 100).replace(/<[^>]+>/g, '') + '...' 
         }), {
-          status: response.status, // 可能是 200，但內容是錯的
-          headers: { 'Content-Type': 'application/json' }
+          status: 200, headers: { 'Content-Type': 'application/json' }
         });
     }
 
   } catch (e) {
     return new Response(JSON.stringify({ error: e.message }), {
-      status: 502, // Bad Gateway
-      headers: { 'Content-Type': 'application/json' },
+      status: 502, headers: { 'Content-Type': 'application/json' },
     });
   }
 }
