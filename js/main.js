@@ -1,4 +1,4 @@
-// js/main.js (完整版 - 包含 V5 首頁 + 工作 + 新聞 + 地圖)
+// js/main.js (完整版 - 修正地圖 Mixed Content)
 
 // --- ★★★ V5 移植過來的全域變數和輔助函式 ★★★ ---
 
@@ -29,7 +29,8 @@ function searchGoogleMaps() {
     if (!query) return;
     const mapFrame = document.getElementById('mapFrame');
     if (!mapFrame) return;
-    const newSrc = `https://maps.google.com/maps?q=$3{encodeURIComponent(query)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+    // ★ [關鍵修改] http -> https ★
+    const newSrc = `https://googleusercontent.com/maps.google.com/14{encodeURIComponent(query)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
     mapFrame.src = newSrc;
 }
 
@@ -497,13 +498,11 @@ function resetPomo() {
 }
 
 
-// --- ★★★ 4. (新) "新聞" 分頁 JS 邏輯 ★★★ ---
-let fullNewsTab = 'tw'; // "新聞" 分頁專用的標籤狀態
-
-// [新] 解析更完整 RSS (包含 description)
+// --- ★★★ "新聞" 分頁 JS 邏輯 ★★★ ---
+let fullNewsTab = 'tw'; 
 function parseFullRSS(xmlText) {
     const articles = [];
-    const maxArticles = 20; // 顯示更多新聞
+    const maxArticles = 20; 
     let items = [...xmlText.matchAll(/<item>([\s\S]*?)<\/item>/g)];
     if (items.length === 0) items.push(...xmlText.matchAll(/<item [^>]+>([\s\S]*?)<\/item>/g));
     if (items.length === 0) {
@@ -519,19 +518,15 @@ function parseFullRSS(xmlText) {
         const title = titleMatch ? cleanCData(titleMatch[1]) : '無標題';
         const linkMatch = itemContent.match(/<link>([\s\S]*?)<\/link>/);
         const link = linkMatch ? (linkMatch[1] || '#') : '#';
-        
-        // [新] 抓取 <description>
         const descMatch = itemContent.match(/<description>([\s\S]*?)<\/description>/);
         let description = descMatch ? cleanCData(descMatch[1]) : '...';
-        description = description.replace(/<[^>]+>/g, '').trim(); // 清理 HTML
-        if (description.length > 150) { // 摘要截短
+        description = description.replace(/<[^>]+>/g, '').trim(); 
+        if (description.length > 150) { 
             description = description.substring(0, 150) + '...';
         }
-
         let sourceName = null;
         const creatorMatch = itemContent.match(/<dc:creator>([\s\S]*?)<\/dc:creator>/);
         sourceName = creatorMatch ? cleanCData(creatorMatch[1]) : 'N/A';
-        
         articles.push({ 
             title: title, 
             url: link.trim(), 
@@ -541,15 +536,12 @@ function parseFullRSS(xmlText) {
     }
     return articles;
 }
-
-// [新] 載入完整新聞 (for News Page)
 async function loadFullNews() {
     const list = document.getElementById('fullNewsList');
     if (!list) return;
     list.innerHTML = '<li class="news-loading">載入新聞中...</li>';
     const refreshBtn = document.getElementById('full-refreshNewsBtn');
     if (refreshBtn) refreshBtn.disabled = true;
-    
     const urlsToTry = RSS_FEEDS[fullNewsTab] || RSS_FEEDS['tw'];
     let success = false;
     for (const rssUrl of urlsToTry) {
@@ -558,9 +550,7 @@ async function loadFullNews() {
             const res = await fetch(proxyUrl);
             const xmlText = await res.text();
             if (!res.ok) { throw new Error(xmlText); }
-            
-            const articles = parseFullRSS(xmlText); // [新] 使用 full parser
-            
+            const articles = parseFullRSS(xmlText); 
             if (articles && articles.length > 0) {
                 list.innerHTML = '';
                 articles.forEach(article => {
@@ -572,7 +562,6 @@ async function loadFullNews() {
                         else if (rssUrl.includes('bbci.co.uk')) sourceName = 'BBC News';
                         else sourceName = 'RSS 來源';
                     }
-                    
                     list.insertAdjacentHTML('beforeend', `
                         <li class="full-news-item" onclick="openLink('${article.url}')">
                             <div class="full-news-title">${article.title || '無標題'}</div>
@@ -593,8 +582,6 @@ async function loadFullNews() {
     }
     if (refreshBtn) refreshBtn.disabled = false;
 }
-
-// [新] 切換完整新聞 (for News Page)
 function switchFullNewsTab(tab) {
     fullNewsTab = tab;
     const contentArea = document.getElementById('content-area');
@@ -606,9 +593,7 @@ function switchFullNewsTab(tab) {
 }
 
 
-// --- ★★★ 5. (新) "地圖" 分頁 JS 邏輯 ★★★ ---
-
-// [新] 搜尋全螢幕地圖 (for Map Page)
+// --- ★★★ "地圖" 分頁 JS 邏輯 ★★★ ---
 function searchFullGoogleMaps() {
     const input = document.getElementById('fullMapSearchInput');
     if (!input) return;
@@ -616,13 +601,13 @@ function searchFullGoogleMaps() {
     if (!query) return;
     const mapFrame = document.getElementById('fullMapFrame');
     if (!mapFrame) return;
-    const newSrc = `https://maps.google.com/maps?q=$4{encodeURIComponent(query)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+    // ★ [關鍵修改] http -> https ★
+    const newSrc = `https://googleusercontent.com/maps.google.com/15{encodeURIComponent(query)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
     mapFrame.src = newSrc;
 }
 
 
-// --- ★★★ 6. (修改) 新架構的 JS 核心邏輯 ★★★ ---
-
+// --- ★★★ 新架構的 JS 核心邏輯 ★★★ ---
 document.addEventListener('DOMContentLoaded', function() {
     
     const tabLinks = document.querySelectorAll('.tab-link');
@@ -638,15 +623,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 const html = await response.text();
                 contentArea.innerHTML = html;
                 
-                // ★ [修改] 根據載入的頁面，執行不同的初始化
                 if (pageName === 'home') {
                     initHomePage();
                 } else if (pageName === 'work') {
                     initWorkPage();
                 } else if (pageName === 'news') {
-                    initNewsPage(); // ★ 新增
+                    initNewsPage();
                 } else if (pageName === 'map') {
-                    initMapPage(); // ★ 新增
+                    initMapPage();
                 }
             }
         } catch (error) {
@@ -658,13 +642,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // "首頁" 啟動函式
     function initHomePage() {
-        // 載入資料
         updateDatetime();
         updateWeather('locationSelectorMain');
         loadStocks();
         loadNews();
         
-        // 綁定事件
         const homeContent = document.getElementById('content-area');
         if (!homeContent) return; 
         
@@ -748,37 +730,27 @@ document.addEventListener('DOMContentLoaded', function() {
         if (pomoResetBtn) pomoResetBtn.onclick = resetPomo;
     }
 
-    // ★ (新) "新聞" 頁面啟動函式 ★
+    // "新聞" 頁面啟動函式
     function initNewsPage() {
-        // 1. 載入資料
         loadFullNews();
-
-        // 2. 綁定按鈕事件
         const newsContent = document.getElementById('content-area');
         if (!newsContent) return;
-
         const newsTw = newsContent.querySelector('#full-tab-tw');
         if (newsTw) newsTw.onclick = () => switchFullNewsTab('tw');
-        
         const newsJp = newsContent.querySelector('#full-tab-jp');
         if (newsJp) newsJp.onclick = () => switchFullNewsTab('jp');
-        
         const newsIntl = newsContent.querySelector('#full-tab-intl');
         if (newsIntl) newsIntl.onclick = () => switchFullNewsTab('intl');
-        
         const refreshNews = newsContent.querySelector('#full-refreshNewsBtn');
         if (refreshNews) refreshNews.onclick = loadFullNews;
     }
 
-    // ★ (新) "地圖" 頁面啟動函式 ★
+    // "地圖" 頁面啟動函式
     function initMapPage() {
-        // 綁定地圖搜尋事件
         const mapContent = document.getElementById('content-area');
         if (!mapContent) return;
-
         const mapSearchBtn = mapContent.querySelector('#fullMapSearchBtn');
         if (mapSearchBtn) mapSearchBtn.onclick = searchFullGoogleMaps;
-        
         const mapSearchInput = mapContent.querySelector('#fullMapSearchInput');
         if (mapSearchInput) mapSearchInput.addEventListener('keypress', e => { if (e.key === 'Enter') searchFullGoogleMaps(); });
     }
