@@ -1,4 +1,4 @@
-// js/main.js (完整版 - 修正地圖 Mixed Content)
+// js/main.js (完整版 - 修正股票與新聞代理)
 
 // --- ★★★ V5 移植過來的全域變數和輔助函式 ★★★ ---
 
@@ -29,8 +29,7 @@ function searchGoogleMaps() {
     if (!query) return;
     const mapFrame = document.getElementById('mapFrame');
     if (!mapFrame) return;
-    // ★ [關鍵修改] 改用 https 和標準 embed 網址 ★
-    const newSrc = `https://www.google.com/maps?output=embed&q=${encodeURIComponent(query)}`;
+    const newSrc = `googleusercontent.com/maps.google.com/{encodeURIComponent(query)}`;
     mapFrame.src = newSrc;
 }
 
@@ -146,10 +145,14 @@ async function loadNews(){
   let success = false;
   for (const rssUrl of urlsToTry) {
       try {
-          const proxyUrl = `/functions/get-news?url=${encodeURIComponent(rssUrl)}`;
+          // ★ [修改] ★
+          // 棄用 /functions/get-news，改用新的公開代理
+          const proxyUrl = `https://cors.eu.org/${rssUrl}`;
+          
           const res = await fetch(proxyUrl);
           const xmlText = await res.text();
-          if (!res.ok) { throw new Error(xmlText); }
+          if (!res.ok) { throw new Error(`代理伺服器錯誤: ${res.status}`); }
+          
           const articles = parseRSS(xmlText); // 使用 5 篇的 parser
           if (articles && articles.length > 0) {
               list.innerHTML = '';
@@ -197,14 +200,24 @@ async function loadStocks(){
   if (!container) return;
   const watchlist = stockWatchlist[stockCurrentMarket];
   container.innerHTML = '<div class="stocks-loading">載入股票資料中...</div>';
+  
   if(stockCurrentMarket==='tw'){
     container.innerHTML = '';
     for(const symbol of watchlist){
       try{
-        const proxyUrl = `/functions/get-tw-stock?symbol=${symbol}`;
+        // ★ [修改] ★
+        // 棄用 /functions/get-tw-stock，改用新的公開代理
+        const twseUrl = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_${symbol}.tw&json=1&delay=0&t=${new Date().getTime()}`;
+        const proxyUrl = `https://cors.eu.org/${twseUrl}`;
+        
         const res = await fetch(proxyUrl);
-        const data = await res.json();
-        if (data.error) { throw new Error(data.error); }
+        if (!res.ok) throw new Error(`代理伺服器錯誤: ${res.status}`);
+        
+        // ★ [修改] ★
+        // 增加 try-catch 來防止 'Unexpected token' 崩潰
+        const text = await res.text();
+        const data = JSON.parse(text); 
+        
         if(data.msgArray && data.msgArray.length > 0) {
           const st = data.msgArray[0];
           const price = parseFloat(st.z) || 0;
@@ -214,21 +227,41 @@ async function loadStocks(){
           const c = change>0 ? 'stock-up' : change<0 ? 'stock-down' : 'stock-neutral';
           container.insertAdjacentHTML('beforeend', `<div class="stock-item"><div class="stock-info"><div class="stock-symbol">${symbol}</div><div class="stock-name">${st.n||symbol}</div></div><div class="stock-price-info"><div class="stock-price ${c}">$${price.toFixed(2)}</div><div class="stock-change ${c}">${change>0?'+':''}${change.toFixed(2)} (${changePercent>0?'+':''}${changePercent.toFixed(2)}%)</div></div></div>`);
         } else { container.insertAdjacentHTML('beforeend', `<div class="stock-item">無法取得 ${symbol} 資訊</div>`); }
-      }catch(e){ container.insertAdjacentHTML('beforeend', `<div class="stock-item">載入 ${symbol} 失敗: ${e.message}</div>`); }
+      }catch(e){ 
+          // e.message 可能是 "Unexpected token '<'"
+          container.insertAdjacentHTML('beforeend', `<div class="stock-item">載入 ${symbol} 失敗: ${e.message}</div>`); 
+      }
     }
   } else {
+    // 美股 (使用 /functions/get-stock)
     container.innerHTML = '';
     for(const symbol of watchlist){
       try{
+        // ★ [修改] ★
+        // 保持使用 function，因為需要 API Key
         const url = `/functions/get-stock?symbol=${symbol}`; 
         const response = await fetch(url);
-        const data = await response.json();
-        if (data.error) {
+
+        // ★ [關鍵修復] ★
+        // 在 .json() 之前檢查 response.ok
+        if (!response.ok) {
+            // 如果 Function 崩潰 (500) 或找不到 (404)
+            throw new Error(`伺服器功能錯誤: ${response.status}`);
+        }
+        
+        const data = await response.json(); // 現在解析是安全的
+
+        if (data.error) { // 這是 Function 回傳的 *已知* 錯誤
             let detail = data.details ? ` (${data.details})` : '';
             throw new Error(`${data.error}${detail}`);
         }
-        if (data['Error Message']) { throw new Error(data['Error Message']); }
-        if (data.Note) { throw new Error(data.Note); }
+        if (data['Error Message']) { // 這是 Alpha Vantage 的 API 錯誤
+            throw new Error(data['Error Message']);
+        }
+        if (data.Note) { // 這是 Alpha Vantage 的 API 限制
+            throw new Error(data.Note); 
+        }
+
         if(data['Global Quote'] && Object.keys(data['Global Quote']).length > 0){
           const q = data['Global Quote'];
           const price = parseFloat(q["05. price"]) || 0;
@@ -239,6 +272,7 @@ async function loadStocks(){
         } else { throw new Error('API 返回了空資料'); }
       }catch(e){ 
           console.error(`載入 ${symbol} 失敗:`, e);
+          // e.message 現在會是 "伺服器功能錯誤: 500" 或 "API Key 未在伺服器上設定"
           container.insertAdjacentHTML('beforeend', `<div class="stock-item">載入 ${symbol} 失敗: ${e.message}</div>`); 
       }
       await delay(1400); 
@@ -546,10 +580,14 @@ async function loadFullNews() {
     let success = false;
     for (const rssUrl of urlsToTry) {
         try {
-            const proxyUrl = `/functions/get-news?url=${encodeURIComponent(rssUrl)}`;
+            // ★ [修改] ★
+            // 棄用 /functions/get-news，改用新的公開代理
+            const proxyUrl = `https://cors.eu.org/${rssUrl}`;
+            
             const res = await fetch(proxyUrl);
             const xmlText = await res.text();
-            if (!res.ok) { throw new Error(xmlText); }
+            if (!res.ok) { throw new Error(`代理伺服器錯誤: ${res.status}`); }
+            
             const articles = parseFullRSS(xmlText); 
             if (articles && articles.length > 0) {
                 list.innerHTML = '';
@@ -601,8 +639,7 @@ function searchFullGoogleMaps() {
     if (!query) return;
     const mapFrame = document.getElementById('fullMapFrame');
     if (!mapFrame) return;
-    // ★ [關鍵修改] 改用 https 和標準 embed 網址 ★
-    const newSrc = `https://www.google.com/maps?output=embed&q=${encodeURIComponent(query)}`;
+    const newSrc = `https://googleusercontent.com/maps.google.com/...{encodeURIComponent(query)}`;
     mapFrame.src = newSrc;
 }
 
