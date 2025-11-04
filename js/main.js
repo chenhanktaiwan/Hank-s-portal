@@ -1,10 +1,11 @@
-// js/main.js (完整版 - 修正股票與新聞代理)
+// js/main.js (完整版 - 包含 V5 修復 + 個人/地圖擴充)
 
 // --- ★★★ V5 移植過來的全域變數和輔助函式 ★★★ ---
 
 // V5 [保留] openLink 函式 (快捷列會用到)
 function openLink(url) {
     if (typeof isWorkLinkEditing !== 'undefined' && isWorkLinkEditing) return; 
+    if (typeof isPersonalLinkEditing !== 'undefined' && isPersonalLinkEditing) return;
     window.open(url, '_blank');
 }
 
@@ -27,10 +28,7 @@ function searchGoogleMaps() {
     if (!input) return;
     const query = input.value.trim();
     if (!query) return;
-    const mapFrame = document.getElementById('mapFrame');
-    if (!mapFrame) return;
-    const newSrc = `http://googleusercontent.com/maps/google.com/16{encodeURIComponent(query)}`;
-    mapFrame.src = newSrc;
+    searchMapQuery(query); // 改為呼叫共用函式
 }
 
 // 天氣 (V5)
@@ -56,22 +54,17 @@ const stockWatchlist = {
 };
 let stockCurrentMarket = 'tw';
 
-// V5 日期函式 (★ 修改 ★)
+// V5 日期函式
 function updateDatetime() {
   const now = new Date();
-  
-  // 1. 更新首頁的大日期 (如果存在)
   const targetMain = document.getElementById('datetime');
   if (targetMain) {
       targetMain.textContent = now.toLocaleDateString('zh-TW',{
         year:'numeric', month:'long', day:'numeric',weekday:'long',hour:'2-digit',minute:'2-digit'
       });
   }
-  
-  // 2. ★ [新增] ★ 更新導覽列的小日期
   const targetNav = document.getElementById('nav-datetime');
   if (targetNav) {
-      // 格式： 10/31 (二) 15:30
       const dateStr = now.toLocaleDateString('zh-TW', { month:'2-digit', day:'2-digit', weekday:'short' });
       const timeStr = now.toLocaleTimeString('zh-TW', { hour:'2-digit', minute:'2-digit' });
       targetNav.textContent = `${dateStr} ${timeStr}`;
@@ -156,15 +149,11 @@ async function loadNews(){
   let success = false;
   for (const rssUrl of urlsToTry) {
       try {
-          // ★ [修改] ★
-          // 棄用 /functions/get-news，改用新的公開代理
           const proxyUrl = `https://cors.eu.org/${rssUrl}`;
-          
           const res = await fetch(proxyUrl);
           const xmlText = await res.text();
           if (!res.ok) { throw new Error(`代理伺服器錯誤: ${res.status}`); }
-          
-          const articles = parseRSS(xmlText); // 使用 5 篇的 parser
+          const articles = parseRSS(xmlText); 
           if (articles && articles.length > 0) {
               list.innerHTML = '';
                articles.forEach(article => {
@@ -216,19 +205,12 @@ async function loadStocks(){
     container.innerHTML = '';
     for(const symbol of watchlist){
       try{
-        // ★ [修改] ★
-        // 棄用 /functions/get-tw-stock，改用新的公開代理
         const twseUrl = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_${symbol}.tw&json=1&delay=0&t=${new Date().getTime()}`;
         const proxyUrl = `https://cors.eu.org/${twseUrl}`;
-        
         const res = await fetch(proxyUrl);
         if (!res.ok) throw new Error(`代理伺服器錯誤: ${res.status}`);
-        
-        // ★ [修改] ★
-        // 增加 try-catch 來防止 'Unexpected token' 崩潰
         const text = await res.text();
         const data = JSON.parse(text); 
-        
         if(data.msgArray && data.msgArray.length > 0) {
           const st = data.msgArray[0];
           const price = parseFloat(st.z) || 0;
@@ -239,7 +221,6 @@ async function loadStocks(){
           container.insertAdjacentHTML('beforeend', `<div class="stock-item"><div class="stock-info"><div class="stock-symbol">${symbol}</div><div class="stock-name">${st.n||symbol}</div></div><div class="stock-price-info"><div class="stock-price ${c}">$${price.toFixed(2)}</div><div class="stock-change ${c}">${change>0?'+':''}${change.toFixed(2)} (${changePercent>0?'+':''}${changePercent.toFixed(2)}%)</div></div></div>`);
         } else { container.insertAdjacentHTML('beforeend', `<div class="stock-item">無法取得 ${symbol} 資訊</div>`); }
       }catch(e){ 
-          // e.message 可能是 "Unexpected token '<'"
           container.insertAdjacentHTML('beforeend', `<div class="stock-item">載入 ${symbol} 失敗: ${e.message}</div>`); 
       }
     }
@@ -248,31 +229,18 @@ async function loadStocks(){
     container.innerHTML = '';
     for(const symbol of watchlist){
       try{
-        // ★ [修改] ★
-        // 保持使用 function，因為需要 API Key
         const url = `/functions/get-stock?symbol=${symbol}`; 
         const response = await fetch(url);
-
-        // ★ [關鍵修復] ★
-        // 在 .json() 之前檢查 response.ok
         if (!response.ok) {
-            // 如果 Function 崩潰 (500) 或找不到 (404)
             throw new Error(`伺服器功能錯誤: ${response.status}`);
         }
-        
-        const data = await response.json(); // 現在解析是安全的
-
-        if (data.error) { // 這是 Function 回傳的 *已知* 錯誤
+        const data = await response.json();
+        if (data.error) {
             let detail = data.details ? ` (${data.details})` : '';
             throw new Error(`${data.error}${detail}`);
         }
-        if (data['Error Message']) { // 這是 Alpha Vantage 的 API 錯誤
-            throw new Error(data['Error Message']);
-        }
-        if (data.Note) { // 這是 Alpha Vantage 的 API 限制
-            throw new Error(data.Note); 
-        }
-
+        if (data['Error Message']) { throw new Error(data['Error Message']); }
+        if (data.Note) { throw new Error(data.Note); }
         if(data['Global Quote'] && Object.keys(data['Global Quote']).length > 0){
           const q = data['Global Quote'];
           const price = parseFloat(q["05. price"]) || 0;
@@ -283,7 +251,6 @@ async function loadStocks(){
         } else { throw new Error('API 返回了空資料'); }
       }catch(e){ 
           console.error(`載入 ${symbol} 失敗:`, e);
-          // e.message 現在會是 "伺服器功能錯誤: 500" 或 "API Key 未在伺服器上設定"
           container.insertAdjacentHTML('beforeend', `<div class="stock-item">載入 ${symbol} 失敗: ${e.message}</div>`); 
       }
       await delay(1400); 
@@ -309,7 +276,7 @@ function addStock() {
 }
 
 
-// --- ★★★ "工作" 分頁快捷列資料 ★★★ ---
+// --- ★★★ "工作" 分頁 JS 邏輯 (無更動) ★★★ ---
 const defaultWorkLinks = [
     { name: 'WACA', url: 'https://waca.com.tw', icon: 'GO' },
     { name: 'ヤクルト本社', url: 'https://www.yakult.co.jp', icon: '本社' },
@@ -320,21 +287,12 @@ const defaultWorkLinks = [
 ];
 let workQuickLinks = [];
 let isWorkLinkEditing = false;
-
-
-// --- ★★★ "工作" 分頁 JS 邏輯 ★★★ ---
 function loadWorkQuickLinks() {
     const storedLinks = localStorage.getItem('portalWorkLinks');
-    if (storedLinks) {
-        workQuickLinks = JSON.parse(storedLinks);
-    } else {
-        workQuickLinks = defaultWorkLinks;
-        saveWorkQuickLinks();
-    }
+    if (storedLinks) { workQuickLinks = JSON.parse(storedLinks); } 
+    else { workQuickLinks = defaultWorkLinks; saveWorkQuickLinks(); }
 }
-function saveWorkQuickLinks() {
-    localStorage.setItem('portalWorkLinks', JSON.stringify(workQuickLinks));
-}
+function saveWorkQuickLinks() { localStorage.setItem('portalWorkLinks', JSON.stringify(workQuickLinks)); }
 function renderWorkQuickLinks() {
     const container = document.getElementById('workQuickLinksContainer');
     if (!container) return;
@@ -358,26 +316,26 @@ function renderWorkQuickLinks() {
         `;
     }
 }
-function toggleEditMode() {
+function toggleEditMode(btnId) {
     isWorkLinkEditing = !isWorkLinkEditing;
-    const editBtn = document.getElementById('editLinksBtn');
+    const editBtn = document.getElementById(btnId);
     if (isWorkLinkEditing) {
         if(editBtn) editBtn.textContent = '完成';
         if(editBtn) editBtn.classList.add('editing');
     } else {
         if(editBtn) editBtn.textContent = '編輯';
         if(editBtn) editBtn.classList.remove('editing');
-        hideLinkForm();
+        hideLinkForm('quickLinkFormArea');
     }
     renderWorkQuickLinks();
 }
-function showLinkForm(index = -1) {
-    const form = document.getElementById('quickLinkFormArea');
-    const title = document.getElementById('quickFormTitle');
-    const nameInput = document.getElementById('quickLinkName');
-    const urlInput = document.getElementById('quickLinkUrl');
-    const iconInput = document.getElementById('quickLinkIcon');
-    const indexInput = document.getElementById('quickLinkIndex');
+function showLinkForm(formId, index = -1) {
+    const form = document.getElementById(formId);
+    const title = form.querySelector('h3');
+    const nameInput = form.querySelector('input[placeholder="名稱 (e.g., Gemini)"]');
+    const urlInput = form.querySelector('input[placeholder="網址 (https://...)"]');
+    const iconInput = form.querySelector('input[placeholder="圖示文字 (e.g., AI)"]');
+    const indexInput = form.querySelector('input[type="hidden"]');
     if (!form || !title || !nameInput || !urlInput || !iconInput || !indexInput) return;
     if (index === -1) {
         title.textContent = '新增連結';
@@ -388,38 +346,32 @@ function showLinkForm(index = -1) {
     }
     form.style.display = 'flex';
 }
-function hideLinkForm() {
-    const form = document.getElementById('quickLinkFormArea');
+function hideLinkForm(formId) {
+    const form = document.getElementById(formId);
     if (form) form.style.display = 'none';
 }
-function saveLink() {
-    const nameInput = document.getElementById('quickLinkName');
-    const urlInput = document.getElementById('quickLinkUrl');
-    const iconInput = document.getElementById('quickLinkIcon');
-    const indexInput = document.getElementById('quickLinkIndex');
+function saveLink(formId, list, storageKey, renderFunc) {
+    const form = document.getElementById(formId);
+    const nameInput = form.querySelector('input[placeholder="名稱 (e.g., Gemini)"]');
+    const urlInput = form.querySelector('input[placeholder="網址 (https://...)"]');
+    const iconInput = form.querySelector('input[placeholder="圖示文字 (e.g., AI)"]');
+    const indexInput = form.querySelector('input[type="hidden"]');
     const name = nameInput.value.trim();
     let url = urlInput.value.trim();
     const icon = iconInput.value.trim() || name.substring(0, 2);
     const index = parseInt(indexInput.value, 10);
-    if (!name || !url) {
-        alert('名稱和網址為必填項。');
-        return;
-    }
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-        url = 'https://' + url;
-    }
-    if (index === -1) {
-        workQuickLinks.push({ name, url, icon });
-    }
-    saveWorkQuickLinks();
-    renderWorkQuickLinks();
-    hideLinkForm();
+    if (!name || !url) { alert('名稱和網址為必填項。'); return; }
+    if (!url.startsWith('http://') && !url.startsWith('https://')) { url = 'https://' + url; }
+    if (index === -1) { list.push({ name, url, icon }); }
+    localStorage.setItem(storageKey, JSON.stringify(list));
+    renderFunc();
+    hideLinkForm(formId);
 }
-function deleteLink(index) {
-    if (confirm(`確定要刪除 "${workQuickLinks[index].name}" 嗎？`)) {
-        workQuickLinks.splice(index, 1);
-        saveWorkQuickLinks();
-        renderWorkQuickLinks();
+function deleteLink(index, list, storageKey, renderFunc) {
+    if (confirm(`確定要刪除 "${list[index].name}" 嗎？`)) {
+        list.splice(index, 1);
+        localStorage.setItem(storageKey, JSON.stringify(list));
+        renderFunc();
     }
 }
 let todos = [];
@@ -428,9 +380,7 @@ function loadTodos() {
   if (storedTodos) { todos = JSON.parse(storedTodos); }
   renderTodos();
 }
-function saveTodos() {
-  localStorage.setItem('portalTodos', JSON.stringify(todos));
-}
+function saveTodos() { localStorage.setItem('portalTodos', JSON.stringify(todos)); }
 function renderTodos() {
   const listElement = document.getElementById('todoList');
   if (!listElement) return;
@@ -471,9 +421,7 @@ function handleTodoClick(e) {
 }
 function loadNotes() {
   const notesArea = document.getElementById('quickNotesArea');
-  if (notesArea) {
-    notesArea.value = localStorage.getItem('portalQuickNotes') || '';
-  }
+  if (notesArea) { notesArea.value = localStorage.getItem('portalQuickNotes') || ''; }
 }
 function saveNotes() {
   const notesArea = document.getElementById('quickNotesArea');
@@ -587,18 +535,26 @@ async function loadFullNews() {
     list.innerHTML = '<li class="news-loading">載入新聞中...</li>';
     const refreshBtn = document.getElementById('full-refreshNewsBtn');
     if (refreshBtn) refreshBtn.disabled = true;
+    
+    // [新] 讀取上次選擇的
+    const savedTab = localStorage.getItem('portalNewsTab') || 'tw';
+    fullNewsTab = savedTab;
+    // 更新按鈕外觀
+    const contentArea = document.getElementById('content-area');
+    if (contentArea) {
+        contentArea.querySelectorAll('#page-news .news-tab').forEach(btn => btn.classList.remove('active'));
+        const activeTab = contentArea.querySelector('#full-tab-'+fullNewsTab);
+        if (activeTab) activeTab.classList.add('active');
+    }
+
     const urlsToTry = RSS_FEEDS[fullNewsTab] || RSS_FEEDS['tw'];
     let success = false;
     for (const rssUrl of urlsToTry) {
         try {
-            // ★ [修改] ★
-            // 棄用 /functions/get-news，改用新的公開代理
             const proxyUrl = `https://cors.eu.org/${rssUrl}`;
-            
             const res = await fetch(proxyUrl);
             const xmlText = await res.text();
             if (!res.ok) { throw new Error(`代理伺服器錯誤: ${res.status}`); }
-            
             const articles = parseFullRSS(xmlText); 
             if (articles && articles.length > 0) {
                 list.innerHTML = '';
@@ -633,6 +589,7 @@ async function loadFullNews() {
 }
 function switchFullNewsTab(tab) {
     fullNewsTab = tab;
+    localStorage.setItem('portalNewsTab', tab); // [新] 儲存選擇
     const contentArea = document.getElementById('content-area');
     if (!contentArea) return;
     contentArea.querySelectorAll('#page-news .news-tab').forEach(btn => btn.classList.remove('active'));
@@ -643,39 +600,163 @@ function switchFullNewsTab(tab) {
 
 
 // --- ★★★ "地圖" 分頁 JS 邏輯 ★★★ ---
+
+// [新] 更新地圖 Iframe (共用函式)
+function searchMapQuery(query) {
+    const mapFrame = document.getElementById('fullMapFrame');
+    if (!mapFrame) return;
+    // 使用標準 Google Maps Embed API
+    const newSrc = `https://maps.google.com/maps?q=$3{encodeURIComponent(query)}`;
+    mapFrame.src = newSrc;
+}
+
+// [新] 搜尋全螢幕地圖 (for Map Page)
 function searchFullGoogleMaps() {
     const input = document.getElementById('fullMapSearchInput');
     if (!input) return;
     const query = input.value.trim();
-    if (!query) return;
-    const mapFrame = document.getElementById('fullMapFrame');
-    if (!mapFrame) return;
-    const newSrc = `http://googleusercontent.com/maps/google.com/26...{encodeURIComponent(query)}`;
-    mapFrame.src = newSrc;
+    if (query) {
+        searchMapQuery(query);
+    }
+}
+// [新] 尋找我的位置
+function findMyLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const { latitude, longitude } = position.coords;
+                // 使用座標來搜尋
+                searchMapQuery(`${latitude},${longitude}`);
+            },
+            (error) => {
+                alert(`無法取得您的位置: ${error.message}`);
+            }
+        );
+    } else {
+        alert("您的瀏覽器不支援地理位置功能。");
+    }
 }
 
-// --- ★★★ (新) 導覽列天氣 JS 邏輯 ★★★ ---
+
+// --- ★★★ "個人" 分頁 JS 邏輯 ★★★ ---
+
+// [新] 個人快捷列
+const defaultPersonalLinks = [
+    { name: 'Facebook', url: 'https://facebook.com', icon: 'FB' },
+    { name: 'YouTube', url: 'https://youtube.com', icon: 'YT' },
+    { name: 'Email', url: 'https://gmail.com', icon: '✉️' },
+];
+let personalQuickLinks = [];
+let isPersonalLinkEditing = false;
+function loadPersonalQuickLinks() {
+    const storedLinks = localStorage.getItem('portalPersonalLinks');
+    if (storedLinks) { personalQuickLinks = JSON.parse(storedLinks); } 
+    else { personalQuickLinks = defaultPersonalLinks; savePersonalQuickLinks(); }
+}
+function savePersonalQuickLinks() { localStorage.setItem('portalPersonalLinks', JSON.stringify(personalQuickLinks)); }
+function renderPersonalQuickLinks() {
+    const container = document.getElementById('personalQuickLinksContainer');
+    if (!container) return;
+    container.innerHTML = '';
+    container.classList.toggle('editing', isPersonalLinkEditing);
+    personalQuickLinks.forEach((link, index) => {
+        container.innerHTML += `
+            <a class="quick-link-item" onclick="openLink('${link.url}')" title="${link.name}">
+                ${isPersonalLinkEditing ? `<button class="quick-link-delete-btn" data-index="${index}">×</button>` : ''}
+                <div class="quick-link-icon">${link.icon}</div>
+                <div class="quick-link-name">${link.name}</div>
+            </a>
+        `;
+    });
+    if (isPersonalLinkEditing) {
+        container.innerHTML += `
+            <a class="quick-link-item quick-link-add-btn" id="addNewPersonalLinkBtn" title="新增連結">
+                <div class="quick-link-icon">+</div>
+                <div class="quick-link-name">新增連結</div>
+            </a>
+        `;
+    }
+}
+function togglePersonalEditMode(btnId) {
+    isPersonalLinkEditing = !isPersonalLinkEditing;
+    const editBtn = document.getElementById(btnId);
+    if (isPersonalLinkEditing) {
+        if(editBtn) editBtn.textContent = '完成';
+        if(editBtn) editBtn.classList.add('editing');
+    } else {
+        if(editBtn) editBtn.textContent = '編輯';
+        if(editBtn) editBtn.classList.remove('editing');
+        hideLinkForm('personalLinkFormArea');
+    }
+    renderPersonalQuickLinks();
+}
+// [新] 每日隨筆
+let dailyLog = [];
+function loadDailyLog() {
+    const storedLog = localStorage.getItem('portalDailyLog');
+    if (storedLog) {
+        dailyLog = JSON.parse(storedLog);
+    }
+    renderDailyLog();
+}
+function saveDailyLog() {
+    localStorage.setItem('portalDailyLog', JSON.stringify(dailyLog));
+}
+function renderDailyLog() {
+    const listElement = document.getElementById('dailyLogList');
+    if (!listElement) return;
+    listElement.innerHTML = '';
+    if (dailyLog.length === 0) {
+        listElement.innerHTML = '<li class="log-entry" style="color: #7a9794;">目前沒有隨筆</li>';
+        return;
+    }
+    dailyLog.forEach(entry => {
+        const item = document.createElement('li');
+        item.className = 'log-entry';
+        item.innerHTML = `
+            <div class="log-entry-timestamp">${entry.timestamp}</div>
+            <div class="log-entry-content">${entry.content}</div>
+        `;
+        listElement.appendChild(item);
+    });
+}
+function addLogEntry() {
+    const input = document.getElementById('dailyLogInput');
+    if (!input) return;
+    const content = input.value.trim();
+    if (content) {
+        const now = new Date();
+        const timestamp = now.toLocaleDateString('zh-TW', {
+            year: 'numeric', month: '2-digit', day: '2-digit', 
+            hour: '2-digit', minute: '2-digit'
+        });
+        dailyLog.push({ timestamp, content });
+        // 保持最多 100 筆紀錄
+        if (dailyLog.length > 100) {
+            dailyLog.shift(); // 移除最舊的
+        }
+        input.value = ''; // 清空輸入框
+        saveDailyLog();
+        renderDailyLog();
+    }
+}
+
+
+// --- ★★★ 導覽列天氣 JS 邏輯 ★★★ ---
 async function loadNavWeather() {
     const targetNav = document.getElementById('nav-weather');
     if (!targetNav) return;
-
     const lat = '25.0330';
     const lon = '121.5654';
-
     try {
-        // ★ [修改] ★
-        // 棄用直接 fetch，改用新的公開代理
         const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&timezone=Asia/Taipei`;
         const proxyUrl = `https://cors.eu.org/${weatherUrl}`;
-        
         const response = await fetch(proxyUrl);
         if (!response.ok) throw new Error(`代理伺服器錯誤: ${response.status}`);
-        
         const data = await response.json();
-        
         if (data && data.current_weather) {
             const cw = data.current_weather;
-            const w = weatherCodes[cw.weathercode] || { emoji:'🌥️' }; // 從 V5 移植的 weatherCodes
+            const w = weatherCodes[cw.weathercode] || { emoji:'🌥️' }; 
             targetNav.innerHTML = `<span class="nav-weather-emoji">${w.emoji}</span> ${Math.round(cw.temperature)}°C`;
         } else {
             throw new Error('天氣 API 未回傳 current_weather');
@@ -703,6 +784,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const html = await response.text();
                 contentArea.innerHTML = html;
                 
+                // [修改] 根據載入的頁面，執行不同的初始化
                 if (pageName === 'home') {
                     initHomePage();
                 } else if (pageName === 'work') {
@@ -711,6 +793,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     initNewsPage();
                 } else if (pageName === 'map') {
                     initMapPage();
+                } else if (pageName === 'personal') {
+                    initPersonalPage(); // ★ 新增
                 }
             }
         } catch (error) {
@@ -722,7 +806,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // "首頁" 啟動函式
     function initHomePage() {
-        updateDatetime(); // 確保首頁日期也被更新
+        updateDatetime();
         updateWeather('locationSelectorMain');
         loadStocks();
         loadNews();
@@ -772,24 +856,23 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!workContent) return;
 
         const editLinksBtn = workContent.querySelector('#editLinksBtn');
-        if (editLinksBtn) editLinksBtn.onclick = toggleEditMode;
+        if (editLinksBtn) editLinksBtn.onclick = () => toggleEditMode('editLinksBtn');
         const saveLinkBtn = workContent.querySelector('#saveLinkBtn');
-        if (saveLinkBtn) saveLinkBtn.onclick = saveLink;
+        if (saveLinkBtn) saveLinkBtn.onclick = () => saveLink('quickLinkFormArea', workQuickLinks, 'portalWorkLinks', renderWorkQuickLinks);
         const cancelLinkBtn = workContent.querySelector('#cancelLinkBtn');
-        if (cancelLinkBtn) cancelLinkBtn.onclick = hideLinkForm;
+        if (cancelLinkBtn) cancelLinkBtn.onclick = () => hideLinkForm('quickLinkFormArea');
         
         const linksContainer = workContent.querySelector('#workQuickLinksContainer');
         if (linksContainer) {
             linksContainer.onclick = function(e) {
                 const deleteBtn = e.target.closest('.quick-link-delete-btn');
                 const addBtn = e.target.closest('#addNewLinkBtn');
-                
                 if (deleteBtn) {
                     e.stopPropagation(); e.preventDefault();
-                    deleteLink(deleteBtn.dataset.index);
+                    deleteLink(deleteBtn.dataset.index, workQuickLinks, 'portalWorkLinks', renderWorkQuickLinks);
                 } else if (addBtn) {
                     e.stopPropagation(); e.preventDefault();
-                    showLinkForm(-1);
+                    showLinkForm('quickLinkFormArea', -1);
                 }
             };
         }
@@ -833,7 +916,60 @@ document.addEventListener('DOMContentLoaded', function() {
         if (mapSearchBtn) mapSearchBtn.onclick = searchFullGoogleMaps;
         const mapSearchInput = mapContent.querySelector('#fullMapSearchInput');
         if (mapSearchInput) mapSearchInput.addEventListener('keypress', e => { if (e.key === 'Enter') searchFullGoogleMaps(); });
+        
+        // [新] 綁定快捷按鈕
+        const findMeBtn = mapContent.querySelector('#findMyLocationBtn');
+        if (findMeBtn) findMeBtn.onclick = findMyLocation;
+        
+        const coffeeBtn = mapContent.querySelector('#searchNearbyCoffeeBtn');
+        if (coffeeBtn) coffeeBtn.onclick = () => searchMapQuery('附近的咖啡廳');
+        
+        const restaurantBtn = mapContent.querySelector('#searchNearbyRestaurantBtn');
+        if (restaurantBtn) restaurantBtn.onclick = () => searchMapQuery('附近的餐廳');
     }
+
+    // ★ (新) "個人" 頁面啟動函式 ★
+    function initPersonalPage() {
+        // 1. 啟動個人快捷列
+        loadPersonalQuickLinks();
+        renderPersonalQuickLinks();
+
+        // 2. 啟動每日隨筆
+        loadDailyLog();
+        renderDailyLog();
+
+        // 3. 綁定事件
+        const personalContent = document.getElementById('content-area');
+        if (!personalContent) return;
+
+        // 綁定快捷列按鈕
+        const editBtn = personalContent.querySelector('#editPersonalLinksBtn');
+        if (editBtn) editBtn.onclick = () => toggleEditMode('editPersonalLinksBtn');
+        const saveBtn = personalContent.querySelector('#savePersonalLinkBtn');
+        if (saveBtn) saveBtn.onclick = () => saveLink('personalLinkFormArea', personalQuickLinks, 'portalPersonalLinks', renderPersonalQuickLinks);
+        const cancelBtn = personalContent.querySelector('#cancelPersonalLinkBtn');
+        if (cancelBtn) cancelBtn.onclick = () => hideLinkForm('personalLinkFormArea');
+
+        const linksContainer = personalContent.querySelector('#personalQuickLinksContainer');
+        if (linksContainer) {
+            linksContainer.onclick = function(e) {
+                const deleteBtn = e.target.closest('.quick-link-delete-btn');
+                const addBtn = e.target.closest('#addNewPersonalLinkBtn');
+                if (deleteBtn) {
+                    e.stopPropagation(); e.preventDefault();
+                    deleteLink(deleteBtn.dataset.index, personalQuickLinks, 'portalPersonalLinks', renderPersonalQuickLinks);
+                } else if (addBtn) {
+                    e.stopPropagation(); e.preventDefault();
+                    showLinkForm('personalLinkFormArea', -1);
+                }
+            };
+        }
+        
+        // 綁定隨筆
+        const addLogBtn = personalContent.querySelector('#addLogEntryBtn');
+        if (addLogBtn) addLogBtn.onclick = addLogEntry;
+    }
+
 
     // 處理分頁點擊
     function handleTabClick(e) {
@@ -850,7 +986,6 @@ document.addEventListener('DOMContentLoaded', function() {
         link.addEventListener('click', handleTabClick);
     });
 
-    // ★ [修改] ★ 
     // 立即啟動全域功能 (導覽列天氣/時間)
     loadNavWeather();
     updateDatetime();
