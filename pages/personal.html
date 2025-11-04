@@ -1,14 +1,35 @@
-<h2>個人</h2>
-<p>管理您的個人待辦事項或筆記。(內容來自 <strong>personal.html</strong>)</p>
-<div>
-    <input type="checkbox" id="task1" name="task1">
-    <label for="task1">完成專案架構</label>
+<div class="card" id="personal-quick-links-card">
+    <div class="card-title">
+        <div class="card-icon">❤️</div>
+        個人快捷列
+        <button id="editPersonalLinksBtn" class="quick-link-edit-btn">編輯</button>
+    </div>
+    
+    <div id="personalQuickLinksContainer" class="quick-links-bar">
+        </div>
+
+    <div id="personalLinkFormArea" class="quick-link-form" style="display: none;">
+        <h3 id="personalFormTitle">新增個人連結</h3>
+        <input type="hidden" id="personalLinkIndex" value="-1">
+        <input type="text" id="personalLinkName" class="search-input" placeholder="名稱 (e.g., Facebook)">
+        <input type="text" id="personalLinkUrl" class="search-input" placeholder="網址 (https://...)">
+        <input type="text" id="personalLinkIcon" class="search-input" placeholder="圖示文字 (e.g., FB)">
+        <div class="quick-link-form-controls">
+            <button id="savePersonalLinkBtn" class="search-btn">儲存</button>
+            <button id="cancelPersonalLinkBtn" class="refresh-btn">取消</button>
+        </div>
+    </div>
 </div>
-<div>
-    <input type="checkbox" id="task2" name="task2">
-    <label for="task2">部署到 Cloudflare</label>
-</div>
-<div>
-    <input type="checkbox" id="task3" name="task3">
-    <label for="task3">喝杯咖啡</label>
+
+<div class="card">
+    <div class="card-title">
+        <div class="card-icon">📔</div>
+        每日隨筆
+    </div>
+    <div class="daily-log-input-area">
+        <textarea id="dailyLogInput" class="quick-notes" placeholder="在這裡輸入您的隨筆..."></textarea>
+        <button id="addLogEntryBtn" class="search-btn">新增隨筆</button>
+    </div>
+    <ul id="dailyLogList" class="daily-log-list">
+        </ul>
 </div>
