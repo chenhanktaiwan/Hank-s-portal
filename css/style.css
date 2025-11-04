@@ -1,4 +1,4 @@
-/* css/style.css (完整版 - 包含導覽列天氣) */
+/* css/style.css (完整版 - 包含個人/地圖擴充) */
 
 /* --- 1. 新架構 (莫蘭迪) 基礎樣式 --- */
 :root {
@@ -25,13 +25,10 @@ body {
     background-color: var(--morandi-primary);
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     z-index: 1000;
-    
-    /* ★ [修改] ★ */
-    /* 改為 Flex 佈局以容納右側資訊 */
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 10px; /* 增加一點左右內距 */
+    padding: 0 10px; 
 }
 
 .nav-tabs {
@@ -39,9 +36,9 @@ body {
     list-style-type: none;
     margin: 0;
     padding: 0;
-    overflow-x: auto; /* 分頁過多時可捲動 */
-    flex-shrink: 1; /* 允許分頁收縮 */
-    min-width: 0; /* 修正 flex 溢位 */
+    overflow-x: auto; 
+    flex-shrink: 1; 
+    min-width: 0; 
 }
 
 .tab-link {
@@ -75,9 +72,8 @@ body {
     transition: opacity 0.3s ease-in-out;
 }
 
-/* --- 4. ★★★ V5 移植樣式 (天氣, 新聞, 股票) ★★★ --- */
+/* --- 4. V5 移植樣式 (天氣, 新聞, 股票) --- */
 
-/* 確保 .content-area 內的 h2 不使用莫蘭迪樣式 (V5 沒有 h2) */
 .content-area h2 {
     color: initial;
     border-bottom: none;
@@ -85,7 +81,6 @@ body {
     margin-top: initial;
 }
 
-/* V5 天氣區塊 CSS */
 .header {
   background:linear-gradient(135deg,#7ba8a3 0,#9dbfbb 100%);
   padding: 20px 32px;
@@ -153,7 +148,6 @@ body {
   font-weight:700;
 }
 
-/* V5 卡片區 (新聞 & 股票) */
 .info-section {
   display:flex;
   gap: 20px;
@@ -250,7 +244,6 @@ body {
 }
 .news-loading {text-align:center;padding:20px;color:#7a9794;font-weight:600;}
 
-/* V5 股票卡 */
 .stock-card {
   flex-basis:360px;
   background:white;
@@ -341,7 +334,7 @@ body {
 .stock-down { color:#2e7052; }
 .stock-neutral { color:#50766e; }
 
-/* V5 卡片共用樣式 (用於 "工作" 分頁) */
+/* --- 5. V5 卡片共用樣式 --- */
 .card {
   background: white;
   border-radius: 20px;
@@ -366,7 +359,7 @@ body {
   font-size: 15px;
 }
 
-/* V5 "搜尋列" 共用樣式 (用於 "工作" 分頁 和 "首頁") */
+/* --- 6. V5 "搜尋列" 共用樣式 --- */
 .search-input {
   flex:1;
   font-size: 14px;
@@ -394,14 +387,13 @@ body {
 }
 .search-btn:hover {background-color:#618577;}
 
-/* --- 5. ★ V5 移植樣式 ("工作" 分頁) ★ --- */
+/* --- 7. V5 移植樣式 ("工作" 分頁) --- */
 .work-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 20px;
 }
 
-/* 待辦事項 */
 .todo-input-area {
   display: flex;
   gap: 10px;
@@ -452,7 +444,6 @@ body {
 }
 .todo-delete-btn:hover { background: #c95056; }
 
-/* 番茄鐘 */
 .pomodoro-timer-display {
   font-size: 4rem;
   font-weight: 700;
@@ -477,7 +468,6 @@ body {
   color: #3e7e72;
 }
 
-/* 快速筆記 */
 .quick-notes {
   width: 100%;
   min-height: 300px;
@@ -503,7 +493,7 @@ body {
   opacity: 0.8;
 }
 
-/* --- 6. ★ 新增的 "工作快捷列" 樣式 ★ --- */
+/* --- 8. "工作快捷列" 樣式 --- */
 .quick-links-bar {
   display: flex;
   gap: 16px; 
@@ -541,9 +531,7 @@ body {
   box-shadow: 0 4px 12px #b8cac7;
 }
 
-/* --- 7. ★ 新增的 "快捷列編輯" 樣式 ★ --- */
-
-/* 標題中的 "編輯" 按鈕 */
+/* --- 9. "快捷列編輯" 樣式 --- */
 .quick-link-edit-btn {
     background: #cce3db;
     border: none;
@@ -621,7 +609,7 @@ body {
     gap: 10px;
 }
 
-/* --- 8. ★ V5 移植：首頁 搜尋、地圖、快捷區塊 ★ --- */
+/* --- 10. V5 移植：首頁 搜尋、地圖、快捷區塊 --- */
 .search-section {
   display:flex;
   gap:10px;
@@ -734,7 +722,7 @@ body {
 .bookmark-link:hover { color: #7ba8a3; }
 
 
-/* --- 9. ★ 擴充分頁："新聞" 頁面 ★ --- */
+/* --- 11. 擴充分頁："新聞" 頁面 --- */
 .full-news-list {
   list-style: none;
   padding: 0;
@@ -773,7 +761,7 @@ body {
   text-overflow: ellipsis;
 }
 
-/* --- 10. ★ 擴充分頁："地圖" 頁面 ★ --- */
+/* --- 12. 擴充分頁："地圖" 頁面 --- */
 .full-map-card {
   margin: -10px; 
   height: calc(100vh - 120px); 
@@ -790,26 +778,79 @@ body {
   width: 100%;
   height: 100%; 
 }
+/* [新] 地圖快捷按鈕 */
+.map-controls {
+    display: flex;
+    gap: 10px;
+    margin-left: 10px;
+}
+.search-btn.compact {
+    padding: 8px 12px; /* 較小的按鈕 */
+    font-size: 13px;
+}
 
-/* --- 11. ★ 新增：導覽列右側資訊 ★ --- */
+/* --- 13. 導覽列右側資訊 --- */
 .nav-info-right {
     display: flex;
     align-items: center;
     gap: 16px;
-    padding-right: 10px; /* 確保與邊緣有間距 */
-    flex-shrink: 0; /* 防止被壓縮 */
+    padding-right: 10px; 
+    flex-shrink: 0; 
 }
 .nav-weather,
 .nav-datetime {
     color: var(--morandi-bg);
     font-size: 14px;
     font-weight: 500;
-    white-space: nowrap; /* 防止換行 */
+    white-space: nowrap; 
 }
 .nav-weather {
-    font-weight: 700; /* 讓溫度顯眼一點 */
+    font-weight: 700; 
 }
 .nav-weather-emoji {
     font-size: 16px;
     margin-right: 4px;
+}
+
+/* --- 14. ★ 擴充分頁："個人" 頁面 ★ --- */
+
+/* 每日隨筆 */
+.daily-log-input-area {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.daily-log-input-area .quick-notes {
+    min-height: 100px; /* 較小的輸入框 */
+}
+.daily-log-input-area .search-btn {
+    align-self: flex-end; /* 按鈕靠右 */
+}
+.daily-log-list {
+    list-style: none;
+    padding: 0;
+    margin-top: 10px;
+    max-height: 400px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column-reverse; /* [新] 讓最新日誌在最上面 */
+}
+.log-entry {
+    background: #f1f7f5;
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 10px;
+    border-left: 4px solid #AEC9C1;
+}
+.log-entry-timestamp {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #578f89;
+    margin-bottom: 6px;
+}
+.log-entry-content {
+    font-size: 0.95rem;
+    color: #3a6259;
+    white-space: pre-wrap; /* 保留換行 */
+    word-wrap: break-word; /* 避免長單字溢出 */
 }
