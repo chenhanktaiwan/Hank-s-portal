@@ -26,8 +26,13 @@ function executeGoogleSearch(inputElement) {
 // 將地圖搜尋邏輯改為共用函式，接受 query 和 iframe 元件
 function searchMapQuery(query, iframeElement) {
     if (!iframeElement) return;
-    // ★ [關鍵修復] 改用 https 和標準 embed 網址 ★
-    const newSrc = `googleusercontent.com/maps.google.com/{encodeURIComponent(query)}`;
+    
+    // ★ [修正] ★
+    // 1. 使用標準的 maps.google.com 網址
+    // 2. 加上 "q" 參數 (錯誤訊息 "Missing the 'q' parameter" 指的就是這個)
+    // 3. 加上 "output=embed" 以便在 iframe 中正確顯示
+    // 4. 修正 JavaScript 樣板字串 (Template Literal) 語法 (加上 $)
+    const newSrc = `https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed`;
     iframeElement.src = newSrc;
 }
 
