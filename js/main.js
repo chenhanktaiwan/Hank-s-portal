@@ -1,4 +1,4 @@
-// js/main.js (完整版 - 還原 News/TW + 修正 US/Map + 新增 Search)
+// js/main.js (完整版 - ★ 整合 /functions 函式 ★)
 
 // --- ★★★ V5 移植過來的全域變數和輔助函式 ★★★ ---
 
@@ -27,11 +27,7 @@ function executeGoogleSearch(inputElement) {
 function searchMapQuery(query, iframeElement) {
     if (!iframeElement) return;
     
-    // ★ [修正] ★
-    // 1. 使用標準的 maps.google.com 網址
-    // 2. 加上 "q" 參數 (錯誤訊息 "Missing the 'q' parameter" 指的就是這個)
-    // 3. 加上 "output=embed" 以便在 iframe 中正確顯示
-    // 4. 修正 JavaScript 樣板字串 (Template Literal) 語法 (加上 $)
+    // ★ [修正] ★ (地圖修正 - 已保留)
     const newSrc = `https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed`;
     iframeElement.src = newSrc;
 }
@@ -84,7 +80,7 @@ function updateWeather(sourceSelectorId){
   let v = selectorMain.value.split(',');
   targetRow.innerHTML = '<div class="weather-loading">載入天氣資料中...</div>';
   
-  // ★ [還原] 天氣 API 改回 cors.eu.org 代理
+  // ★ [注意] 天氣 API 繼續使用 cors.eu.org (因為我們沒有 get-weather.js)
   const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${v[0]}&longitude=${v[1]}&current_weather=true&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia/Taipei&forecast_days=7`;
   const proxyUrl = `https://cors.eu.org/${weatherUrl}`;
   
@@ -164,12 +160,16 @@ async function loadNews(){
   let success = false;
   for (const rssUrl of urlsToTry) {
       try {
-          // ★ [還原] 還原回 cors.eu.org 代理 ★
-          const proxyUrl = `https://cors.eu.org/${rssUrl}`;
+          // ★★★ [API 修正 1/3] ★★★
+          // 改為呼叫 /functions/get-news.js
+          const url = `/functions/get-news?url=${encodeURIComponent(rssUrl)}`;
           
-          const res = await fetch(proxyUrl);
-          const xmlText = await res.text();
-          if (!res.ok) { throw new Error(`代理伺服器錯誤: ${res.status}`); }
+          const res = await fetch(url);
+          const xmlText = await res.text(); // 取得文字 (無論成功或失敗)
+          if (!res.ok) { 
+              // xmlText 將包含來自後端函式的錯誤訊息
+              throw new Error(xmlText); 
+          }
           
           const articles = parseRSS(xmlText); 
           if (articles && articles.length > 0) {
@@ -223,17 +223,19 @@ async function loadStocks(){
     container.innerHTML = '';
     for(const symbol of watchlist){
       try{
-        // ★ [還原] 還原回 cors.eu.org 代理 ★
-        const twseUrl = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_${symbol}.tw&json=1&delay=0&t=${new Date().getTime()}`;
-        const proxyUrl = `https://cors.eu.org/${twseUrl}`;
+        // ★★★ [API 修正 2/3] ★★★
+        // 改為呼叫 /functions/get-tw-stock.js
+        const url = `/functions/get-tw-stock?symbol=${symbol}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`台股伺服器功能錯誤: ${res.status}`);
+
+        const data = await res.json();
         
-        const res = await fetch(proxyUrl);
-        if (!res.ok) throw new Error(`代理伺服器錯誤: ${res.status}`);
-        
-        const text = await res.text();
-        if (!text) throw new Error('台股 API 回傳空內容');
-        
-        const data = JSON.parse(text); 
+        // ★ [新增] 檢查後端回傳的錯誤
+        if (data.error) {
+            let detail = data.details ? ` (${data.details})` : '';
+            throw new Error(`API 錯誤: ${data.error}${detail}`);
+        }
         
         if(data.msgArray && data.msgArray.length > 0) {
           const st = data.msgArray[0];
@@ -249,7 +251,7 @@ async function loadStocks(){
       }
     }
   } else {
-    // 美股 (使用 /functions/get-stock)
+    // 美股 (使用 /functions/get-stock - 這部分原本就是正確的)
     container.innerHTML = '';
     for(const symbol of watchlist){
       try{
@@ -592,12 +594,16 @@ async function loadFullNews() {
     let success = false;
     for (const rssUrl of urlsToTry) {
         try {
-            // ★ [還原] 還原回 cors.eu.org 代理 ★
-            const proxyUrl = `https://cors.eu.org/${rssUrl}`;
+            // ★★★ [API 修正 3/3] ★★★
+            // 改為呼叫 /functions/get-news.js
+            const url = `/functions/get-news?url=${encodeURIComponent(rssUrl)}`;
             
-            const res = await fetch(proxyUrl);
-            const xmlText = await res.text();
-            if (!res.ok) { throw new Error(`代理伺服器錯誤: ${res.status}`); }
+            const res = await fetch(url);
+            const xmlText = await res.text(); // 取得文字 (無論成功或失敗)
+            if (!res.ok) { 
+                // xmlText 將包含來自後端函式的錯誤訊息
+                throw new Error(xmlText); 
+            }
             
             const articles = parseFullRSS(xmlText); 
             if (articles && articles.length > 0) {
@@ -738,7 +744,7 @@ function renderDailyLog() {
         listElement.innerHTML = '<li class="log-entry" style="color: #7a9794;">目前沒有隨筆</li>';
         return;
     }
-    // ★★★ [個人分頁 修正 2/2] ★★★
+    // ★★★ [個人分頁 修正 2/2] ★★★ (已保留)
     // 移除了 .reverse()，因為 CSS 中已有 flex-direction: column-reverse
     dailyLog.forEach(entry => {
         const item = document.createElement('li');
@@ -779,7 +785,7 @@ async function loadNavWeather() {
     const lon = '121.5654';
     try {
         const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&timezone=Asia/Taipei`;
-        // ★ [還原] 還原回 cors.eu.org 代理 ★
+        // ★ [注意] 天氣 API 繼續使用 cors.eu.org (因為我們沒有 get-weather.js)
         const proxyUrl = `https://cors.eu.org/${weatherUrl}`;
         
         const response = await fetch(proxyUrl);
@@ -1014,9 +1020,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // 綁定快捷列按鈕
         const editBtn = pageContent.querySelector('#editPersonalLinksBtn');
-        // ★★★ [個人分頁 修正 1/2] ★★★
-        // 1. 呼叫了錯誤的函式 (應為 toggleEditMode)
-        // 2. 傳遞了錯誤的函式 (應為 renderPersonalQuickLinks)
+        // ★★★ [個人分頁 修正 1/2] ★★★ (已保留)
         if (editBtn) editBtn.onclick = () => toggleEditMode('editPersonalLinksBtn', 'personalLinkFormArea', renderPersonalQuickLinks);
         
         const saveBtn = pageContent.querySelector('#savePersonalLinkBtn');
