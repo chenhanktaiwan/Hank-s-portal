@@ -493,7 +493,7 @@ body {
   opacity: 0.8;
 }
 
-/* --- 8. "工作快捷列" 樣式 --- */
+/* --- 8. "工作快捷列" 樣式 (★ 優化 ★) --- */
 .quick-links-bar {
   display: flex;
   gap: 16px; 
@@ -520,6 +520,7 @@ body {
   font-weight: 700;
   font-size: 20px;
   transition: background 0.3s, box-shadow 0.3s;
+  overflow: hidden; /* ★ [優化] 新增：裁切圖片圓角 */
 }
 .quick-link-name {
   font-size: 13px;
@@ -530,6 +531,14 @@ body {
   background: #b8d4cb;
   box-shadow: 0 4px 12px #b8cac7;
 }
+
+/* ★ [優化] 新增 Favicon 圖片樣式 ★ */
+.quick-link-favicon {
+    width: 100%; /* 填滿容器 */
+    height: 100%; /* 填滿容器 */
+    object-fit: cover; /* 確保圖片填滿 */
+}
+
 
 /* --- 9. "快捷列編輯" 樣式 --- */
 .quick-link-edit-btn {
