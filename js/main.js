@@ -350,18 +350,20 @@ function renderWorkQuickLinks() {
         `;
     }
 }
-function toggleEditMode(btnId) {
-    isWorkLinkEditing = !isWorkLinkEditing;
+// ★ [修改] 抽離出共用函式 (用於工作 & 個人)
+function toggleEditMode(btnId, formId, renderFunc) {
+    const isEditing = btnId === 'editLinksBtn' ? isWorkLinkEditing = !isWorkLinkEditing : isPersonalLinkEditing = !isPersonalLinkEditing;
     const editBtn = document.getElementById(btnId);
-    if (isWorkLinkEditing) {
+    
+    if (isEditing) {
         if(editBtn) editBtn.textContent = '完成';
         if(editBtn) editBtn.classList.add('editing');
     } else {
         if(editBtn) editBtn.textContent = '編輯';
         if(editBtn) editBtn.classList.remove('editing');
-        hideLinkForm('quickLinkFormArea');
+        hideLinkForm(formId);
     }
-    renderWorkQuickLinks();
+    renderFunc();
 }
 function showLinkForm(formId, index = -1) {
     const form = document.getElementById(formId);
