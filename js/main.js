@@ -1,4 +1,4 @@
-// js/main.js (完整版 - ★ 優化快捷列 Favicon + 混合顯示 ★)
+// js/main.js (完整版 - ★ 強制 Favicon + 視覺修正 ★)
 
 // --- ★★★ V5 移植過來的全域變數和輔助函式 ★★★ ---
 
@@ -313,14 +313,14 @@ function addStock() {
 
 // --- ★★★ "工作" 分頁 JS 邏輯 (★ 優化 ★) ★★★ ---
 
-// ★ [優化] 還原 defaultWorkLinks 中的 icon 屬性 (用於混合顯示)
+// ★ [優化] 移除 defaultWorkLinks 中的 icon 屬性
 const defaultWorkLinks = [
-    { name: 'WACA', url: 'https://waca.com.tw', icon: 'GO' },
-    { name: 'ヤクルト本社', url: 'https://www.yakult.co.jp', icon: '本社' },
-    { name: '養楽多超人', url: 'https://www.yakult.com.tw', icon: '超人' },
-    { name: 'Cloudflare', url: 'https://dash.cloudflare.com/', icon: 'CF' },
-    { name: 'GitHub', url: 'https://github.com/', icon: 'GH' },
-    { name: 'Gemini', url: 'https://gemini.google.com/', icon: 'AI' }
+    { name: 'WACA', url: 'https://waca.com.tw' },
+    { name: 'ヤクルト本社', url: 'https://www.yakult.co.jp' },
+    { name: '養楽多超人', url: 'https://www.yakult.com.tw' },
+    { name: 'Cloudflare', url: 'https://dash.cloudflare.com/' },
+    { name: 'GitHub', url: 'https://github.com/' },
+    { name: 'Gemini', url: 'https://gemini.google.com/' }
 ];
 let workQuickLinks = [];
 let isWorkLinkEditing = false;
@@ -338,22 +338,15 @@ function renderWorkQuickLinks() {
     
     workQuickLinks.forEach((link, index) => {
         
-        // ★ [優化] 智慧判斷 icon 內容
-        let iconHtml;
-        if (link.icon) {
-            // 如果 icon 存在 (舊資料或預設值)，則顯示文字
-            iconHtml = link.icon;
-        } else {
-            // 如果 icon 不存在 (新儲存的)，則抓取 favicon
-            let domain;
-            try {
-                domain = new URL(link.url).hostname;
-            } catch (e) {
-                domain = 'google.com'; // Fallback
-            }
-            const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
-            iconHtml = `<img src="${faviconUrl}" alt="${link.name.substring(0, 2)}" class="quick-link-favicon">`;
+        // ★ [優化] 移除智慧判斷，一律抓取 Favicon
+        let domain;
+        try {
+            domain = new URL(link.url).hostname;
+        } catch (e) {
+            domain = 'google.com'; // Fallback
         }
+        const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+        const iconHtml = `<img src="${faviconUrl}" alt="${link.name.substring(0, 2)}" class="quick-link-favicon">`;
             
         container.innerHTML += `
             <a class="quick-link-item" onclick="openLink('${link.url}')" title="${link.name}">
@@ -429,11 +422,11 @@ function saveLink(formId, list, storageKey, renderFunc) {
     if (!name || !url) { alert('名稱和網址為必填項。'); return; }
     if (!url.startsWith('http://') && !url.startsWith('https://')) { url = 'https://' + url; }
     
-    // ★ [優化] 只儲存 name 和 url。icon 會在渲染時自動抓取。
+    // ★ [優化] 只儲存 name 和 url。
     if (index === -1) { 
         list.push({ name, url }); 
     } else {
-        // ★ [優化] 如果是編輯，也確保舊的 icon 屬性被移除
+        // ★ [優化] 如果是編輯，也確保旧的 icon 屬性被移除
         list[index].name = name;
         list[index].url = url;
         if (list[index].icon) {
@@ -706,11 +699,11 @@ function findMyLocation(iframeElement) {
 
 // --- ★★★ "個人" 分頁 JS 邏輯 (★ 優化 ★) ★★★ ---
 
-// ★ [優化] 還原 defaultPersonalLinks 中的 icon 屬性 (用於混合顯示)
+// ★ [優化] 移除 defaultPersonalLinks 中的 icon 屬性
 const defaultPersonalLinks = [
-    { name: 'Facebook', url: 'https://facebook.com', icon: 'FB' },
-    { name: 'YouTube', url: 'https://youtube.com', icon: 'YT' },
-    { name: 'Email', url: 'https://gmail.com', icon: '✉️' },
+    { name: 'Facebook', url: 'https://facebook.com' },
+    { name: 'YouTube', url: 'https://youtube.com' },
+    { name: 'Email', url: 'https://gmail.com' },
 ];
 let personalQuickLinks = [];
 let isPersonalLinkEditing = false;
@@ -728,26 +721,19 @@ function renderPersonalQuickLinks() {
     
     personalQuickLinks.forEach((link, index) => {
         
-        // ★ [優化] 智慧判斷 icon 內容
-        let iconHtml;
-        if (link.icon) {
-            // 如果 icon 存在 (舊資料或預設值)，則顯示文字
-            iconHtml = link.icon;
-        } else {
-            // 如果 icon 不存在 (新儲存的)，則抓取 favicon
-            let domain;
-            try {
-                domain = new URL(link.url).hostname;
-            } catch (e) {
-                domain = 'google.com'; // Fallback
-            }
-            const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
-            iconHtml = `<img src="${faviconUrl}" alt="${link.name.substring(0, 2)}" class="quick-link-favicon">`;
+        // ★ [優化] 移除智慧判斷，一律抓取 Favicon
+        let domain;
+        try {
+            domain = new URL(link.url).hostname;
+        } catch (e) {
+            domain = 'google.com'; // Fallback
         }
+        const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+        const iconHtml = `<img src="${faviconUrl}" alt="${link.name.substring(0, 2)}" class="quick-link-favicon">`;
             
         container.innerHTML += `
             <a class="quick-link-item" onclick="openLink('${link.url}')" title="${link.name}">
-                ${isPersonalLinkEditing ? `<button class="quick-link-delete-btn" data-index="${index}">×</button>` : ''}
+                ${isWorkLinkEditing ? `<button class="quick-link-delete-btn" data-index="${index}">×</button>` : ''}
                 
                 <div class="quick-link-icon">
                     ${iconHtml} </div>
