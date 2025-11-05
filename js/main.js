@@ -808,7 +808,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 const html = await response.text();
                 contentArea.innerHTML = html;
                 
-                // [修改] 根據載入的頁面，執行不同的初始化
                 if (pageName === 'home') {
                     initHomePage();
                 } else if (pageName === 'work') {
