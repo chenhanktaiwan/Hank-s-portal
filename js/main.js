@@ -1,4 +1,4 @@
-// js/main.js (完整版 - 包含 V5 修復 + 個人/地圖擴充)
+// js/main.js (完整版 - 還原 News/TW + 修正 US/Map + 新增 Search)
 
 // --- ★★★ V5 移植過來的全域變數和輔助函式 ★★★ ---
 
@@ -9,11 +9,11 @@ function openLink(url) {
     window.open(url, '_blank');
 }
 
-// V5 搜尋 (Google)
-function doGoogleSearch() {
-    const input = document.getElementById('searchInput');
-    if (!input) return;
-    const val = input.value.trim();
+// ★ [修改] ★ 
+// 將搜尋邏輯改為共用函式，接受 input 元件
+function executeGoogleSearch(inputElement) {
+    if (!inputElement) return;
+    const val = inputElement.value.trim();
     if (!val) return;
     if (val.includes('.') && !val.includes(' ')) {
         window.open(val.startsWith('http') ? val : 'https://' + val, '_blank');
@@ -22,13 +22,13 @@ function doGoogleSearch() {
     }
 }
 
-// V5 搜尋 (Maps)
-function searchGoogleMaps() {
-    const input = document.getElementById('mapSearchInput');
-    if (!input) return;
-    const query = input.value.trim();
-    if (!query) return;
-    searchMapQuery(query); // 改為呼叫共用函式
+// ★ [修改] ★ 
+// 將地圖搜尋邏輯改為共用函式，接受 query 和 iframe 元件
+function searchMapQuery(query, iframeElement) {
+    if (!iframeElement) return;
+    // ★ [關鍵修復] 改用 https 和標準 embed 網址 ★
+    const newSrc = `googleusercontent.com/maps.google.com/{encodeURIComponent(query)}`;
+    iframeElement.src = newSrc;
 }
 
 // 天氣 (V5)
@@ -78,8 +78,17 @@ function updateWeather(sourceSelectorId){
   if (!selectorMain || !targetRow) return;
   let v = selectorMain.value.split(',');
   targetRow.innerHTML = '<div class="weather-loading">載入天氣資料中...</div>';
-  fetch(`https://api.open-meteo.com/v1/forecast?latitude=${v[0]}&longitude=${v[1]}&current_weather=true&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia/Taipei&forecast_days=7`)
-  .then(r=>r.json()).then(d=>{
+  
+  // ★ [還原] 天氣 API 改回 cors.eu.org 代理
+  const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${v[0]}&longitude=${v[1]}&current_weather=true&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia/Taipei&forecast_days=7`;
+  const proxyUrl = `https://cors.eu.org/${weatherUrl}`;
+  
+  fetch(proxyUrl)
+  .then(r => {
+      if (!r.ok) throw new Error(`代理伺服器錯誤: ${r.status}`);
+      return r.json();
+  })
+  .then(d=>{
     let html='';
     const wd=['週日','週一','週二','週三','週四','週五','週六'];
     for(let i=0;i<7;i++){
@@ -93,7 +102,8 @@ function updateWeather(sourceSelectorId){
       html+=`<div class="weather-day-h"><div class="weather-date-h">${dayName}</div><span class="weather-emoji-h">${w.emoji}</span><div class="weather-temp-h">${tMin}° - ${tMax}°</div><div class="weather-rain-h">🌧️ ${rainProb}%</div><div class="weather-desc-h">${w.desc}</div></div>`;
     }
     targetRow.innerHTML = html;
-  }).catch(() => {
+  }).catch((e) => {
+    console.error("首頁天氣載入失敗:", e);
     targetRow.innerHTML='<div class="weather-loading">天氣資料載入失敗</div>';
   });
 }
@@ -116,7 +126,7 @@ function cleanCData(str) {
 }
 function parseRSS(xmlText) {
     const articles = [];
-    const maxArticles = 5; // 首頁小工具只顯示 5 篇
+    const maxArticles = 5; 
     let items = [...xmlText.matchAll(/<item>([\s\S]*?)<\/item>/g)];
     if (items.length === 0) items.push(...xmlText.matchAll(/<item [^>]+>([\s\S]*?)<\/item>/g));
     if (items.length === 0) {
@@ -149,10 +159,13 @@ async function loadNews(){
   let success = false;
   for (const rssUrl of urlsToTry) {
       try {
+          // ★ [還原] 還原回 cors.eu.org 代理 ★
           const proxyUrl = `https://cors.eu.org/${rssUrl}`;
+          
           const res = await fetch(proxyUrl);
           const xmlText = await res.text();
           if (!res.ok) { throw new Error(`代理伺服器錯誤: ${res.status}`); }
+          
           const articles = parseRSS(xmlText); 
           if (articles && articles.length > 0) {
               list.innerHTML = '';
@@ -205,12 +218,18 @@ async function loadStocks(){
     container.innerHTML = '';
     for(const symbol of watchlist){
       try{
+        // ★ [還原] 還原回 cors.eu.org 代理 ★
         const twseUrl = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_${symbol}.tw&json=1&delay=0&t=${new Date().getTime()}`;
         const proxyUrl = `https://cors.eu.org/${twseUrl}`;
+        
         const res = await fetch(proxyUrl);
         if (!res.ok) throw new Error(`代理伺服器錯誤: ${res.status}`);
+        
         const text = await res.text();
+        if (!text) throw new Error('台股 API 回傳空內容');
+        
         const data = JSON.parse(text); 
+        
         if(data.msgArray && data.msgArray.length > 0) {
           const st = data.msgArray[0];
           const price = parseFloat(st.z) || 0;
@@ -231,16 +250,31 @@ async function loadStocks(){
       try{
         const url = `/functions/get-stock?symbol=${symbol}`; 
         const response = await fetch(url);
+
+        // ★ [關鍵修復] ★
+        // 這是您缺少的錯誤檢查
         if (!response.ok) {
             throw new Error(`伺服器功能錯誤: ${response.status}`);
         }
-        const data = await response.json();
-        if (data.error) {
+        
+        // ★ [關鍵修復] ★
+        // 檢查 Content-Type 是否為 JSON
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+            const errorText = await response.text();
+            console.error('美股 API 回傳 HTML:', errorText.substring(0, 100));
+            throw new Error(`API回傳非JSON (Key錯誤或已達上限)`);
+        }
+        
+        const data = await response.json(); 
+        
+        if (data.error) { 
             let detail = data.details ? ` (${data.details})` : '';
             throw new Error(`${data.error}${detail}`);
         }
         if (data['Error Message']) { throw new Error(data['Error Message']); }
         if (data.Note) { throw new Error(data.Note); }
+
         if(data['Global Quote'] && Object.keys(data['Global Quote']).length > 0){
           const q = data['Global Quote'];
           const price = parseFloat(q["05. price"]) || 0;
@@ -331,12 +365,13 @@ function toggleEditMode(btnId) {
 }
 function showLinkForm(formId, index = -1) {
     const form = document.getElementById(formId);
+    if (!form) return;
     const title = form.querySelector('h3');
-    const nameInput = form.querySelector('input[placeholder="名稱 (e.g., Gemini)"]');
-    const urlInput = form.querySelector('input[placeholder="網址 (https://...)"]');
-    const iconInput = form.querySelector('input[placeholder="圖示文字 (e.g., AI)"]');
+    const nameInput = form.querySelector('input[type="text"][placeholder*="名稱"]'); // 改用 placeholder 搜尋
+    const urlInput = form.querySelector('input[type="text"][placeholder*="網址"]');
+    const iconInput = form.querySelector('input[type="text"][placeholder*="圖示"]');
     const indexInput = form.querySelector('input[type="hidden"]');
-    if (!form || !title || !nameInput || !urlInput || !iconInput || !indexInput) return;
+    if (!title || !nameInput || !urlInput || !iconInput || !indexInput) return;
     if (index === -1) {
         title.textContent = '新增連結';
         indexInput.value = '-1';
@@ -352,9 +387,10 @@ function hideLinkForm(formId) {
 }
 function saveLink(formId, list, storageKey, renderFunc) {
     const form = document.getElementById(formId);
-    const nameInput = form.querySelector('input[placeholder="名稱 (e.g., Gemini)"]');
-    const urlInput = form.querySelector('input[placeholder="網址 (https://...)"]');
-    const iconInput = form.querySelector('input[placeholder="圖示文字 (e.g., AI)"]');
+    if (!form) return;
+    const nameInput = form.querySelector('input[type="text"][placeholder*="名稱"]');
+    const urlInput = form.querySelector('input[type="text"][placeholder*="網址"]');
+    const iconInput = form.querySelector('input[type="text"][placeholder*="圖示"]');
     const indexInput = form.querySelector('input[type="hidden"]');
     const name = nameInput.value.trim();
     let url = urlInput.value.trim();
@@ -536,10 +572,8 @@ async function loadFullNews() {
     const refreshBtn = document.getElementById('full-refreshNewsBtn');
     if (refreshBtn) refreshBtn.disabled = true;
     
-    // [新] 讀取上次選擇的
     const savedTab = localStorage.getItem('portalNewsTab') || 'tw';
     fullNewsTab = savedTab;
-    // 更新按鈕外觀
     const contentArea = document.getElementById('content-area');
     if (contentArea) {
         contentArea.querySelectorAll('#page-news .news-tab').forEach(btn => btn.classList.remove('active'));
@@ -551,10 +585,13 @@ async function loadFullNews() {
     let success = false;
     for (const rssUrl of urlsToTry) {
         try {
+            // ★ [還原] 還原回 cors.eu.org 代理 ★
             const proxyUrl = `https://cors.eu.org/${rssUrl}`;
+            
             const res = await fetch(proxyUrl);
             const xmlText = await res.text();
             if (!res.ok) { throw new Error(`代理伺服器錯誤: ${res.status}`); }
+            
             const articles = parseFullRSS(xmlText); 
             if (articles && articles.length > 0) {
                 list.innerHTML = '';
@@ -589,7 +626,7 @@ async function loadFullNews() {
 }
 function switchFullNewsTab(tab) {
     fullNewsTab = tab;
-    localStorage.setItem('portalNewsTab', tab); // [新] 儲存選擇
+    localStorage.setItem('portalNewsTab', tab); 
     const contentArea = document.getElementById('content-area');
     if (!contentArea) return;
     contentArea.querySelectorAll('#page-news .news-tab').forEach(btn => btn.classList.remove('active'));
@@ -600,33 +637,20 @@ function switchFullNewsTab(tab) {
 
 
 // --- ★★★ "地圖" 分頁 JS 邏輯 ★★★ ---
-
-// [新] 更新地圖 Iframe (共用函式)
-function searchMapQuery(query) {
-    const mapFrame = document.getElementById('fullMapFrame');
-    if (!mapFrame) return;
-    // 使用標準 Google Maps Embed API
-    const newSrc = `https://maps.google.com/maps?q=$3{encodeURIComponent(query)}`;
-    mapFrame.src = newSrc;
-}
-
-// [新] 搜尋全螢幕地圖 (for Map Page)
-function searchFullGoogleMaps() {
-    const input = document.getElementById('fullMapSearchInput');
+function searchFullGoogleMaps(iframeElement) {
+    const input = document.getElementById('content-area').querySelector('.g-map-search-input');
     if (!input) return;
     const query = input.value.trim();
     if (query) {
-        searchMapQuery(query);
+        searchMapQuery(query, iframeElement);
     }
 }
-// [新] 尋找我的位置
-function findMyLocation() {
+function findMyLocation(iframeElement) {
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 const { latitude, longitude } = position.coords;
-                // 使用座標來搜尋
-                searchMapQuery(`${latitude},${longitude}`);
+                searchMapQuery(`${latitude},${longitude}`, iframeElement);
             },
             (error) => {
                 alert(`無法取得您的位置: ${error.message}`);
@@ -639,8 +663,6 @@ function findMyLocation() {
 
 
 // --- ★★★ "個人" 分頁 JS 邏輯 ★★★ ---
-
-// [新] 個人快捷列
 const defaultPersonalLinks = [
     { name: 'Facebook', url: 'https://facebook.com', icon: 'FB' },
     { name: 'YouTube', url: 'https://youtube.com', icon: 'YT' },
@@ -690,7 +712,6 @@ function togglePersonalEditMode(btnId) {
     }
     renderPersonalQuickLinks();
 }
-// [新] 每日隨筆
 let dailyLog = [];
 function loadDailyLog() {
     const storedLog = localStorage.getItem('portalDailyLog');
@@ -710,12 +731,12 @@ function renderDailyLog() {
         listElement.innerHTML = '<li class="log-entry" style="color: #7a9794;">目前沒有隨筆</li>';
         return;
     }
-    dailyLog.forEach(entry => {
+    [...dailyLog].reverse().forEach(entry => {
         const item = document.createElement('li');
         item.className = 'log-entry';
         item.innerHTML = `
             <div class="log-entry-timestamp">${entry.timestamp}</div>
-            <div class="log-entry-content">${entry.content}</div>
+            <div class="log-entry-content">${entry.content.replace(/\n/g, '<br>')}</div>
         `;
         listElement.appendChild(item);
     });
@@ -731,11 +752,10 @@ function addLogEntry() {
             hour: '2-digit', minute: '2-digit'
         });
         dailyLog.push({ timestamp, content });
-        // 保持最多 100 筆紀錄
         if (dailyLog.length > 100) {
-            dailyLog.shift(); // 移除最舊的
+            dailyLog.shift();
         }
-        input.value = ''; // 清空輸入框
+        input.value = '';
         saveDailyLog();
         renderDailyLog();
     }
@@ -750,10 +770,14 @@ async function loadNavWeather() {
     const lon = '121.5654';
     try {
         const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&timezone=Asia/Taipei`;
+        // ★ [還原] 還原回 cors.eu.org 代理 ★
         const proxyUrl = `https://cors.eu.org/${weatherUrl}`;
+        
         const response = await fetch(proxyUrl);
         if (!response.ok) throw new Error(`代理伺服器錯誤: ${response.status}`);
+        
         const data = await response.json();
+        
         if (data && data.current_weather) {
             const cw = data.current_weather;
             const w = weatherCodes[cw.weathercode] || { emoji:'🌥️' }; 
@@ -794,7 +818,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else if (pageName === 'map') {
                     initMapPage();
                 } else if (pageName === 'personal') {
-                    initPersonalPage(); // ★ 新增
+                    initPersonalPage();
                 }
             }
         } catch (error) {
@@ -806,42 +830,54 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // "首頁" 啟動函式
     function initHomePage() {
-        updateDatetime();
+        updateDatetime(); 
         updateWeather('locationSelectorMain');
         loadStocks();
         loadNews();
         
-        const homeContent = document.getElementById('content-area');
-        if (!homeContent) return; 
+        const pageContent = document.getElementById('content-area');
+        if (!pageContent) return; 
         
-        const weatherSelector = homeContent.querySelector('#locationSelectorMain');
+        const weatherSelector = pageContent.querySelector('#locationSelectorMain');
         if (weatherSelector) weatherSelector.onchange = () => updateWeather('locationSelectorMain');
         
-        const newsTw = homeContent.querySelector('#tab-tw');
+        const newsTw = pageContent.querySelector('#tab-tw');
         if (newsTw) newsTw.onclick = () => switchNewsTab('tw');
-        const newsJp = homeContent.querySelector('#tab-jp');
+        const newsJp = pageContent.querySelector('#tab-jp');
         if (newsJp) newsJp.onclick = () => switchNewsTab('jp');
-        const newsIntl = homeContent.querySelector('#tab-intl');
+        const newsIntl = pageContent.querySelector('#tab-intl');
         if (newsIntl) newsIntl.onclick = () => switchNewsTab('intl');
-        const refreshNews = homeContent.querySelector('#refreshNewsBtn');
+        const refreshNews = pageContent.querySelector('#refreshNewsBtn');
         if (refreshNews) refreshNews.onclick = loadNews;
         
-        const stockTw = homeContent.querySelector('#stockTab_tw');
+        const stockTw = pageContent.querySelector('#stockTab_tw');
         if (stockTw) stockTw.onclick = () => switchStockMarket('tw');
-        const stockUs = homeContent.querySelector('#stockTab_us');
+        const stockUs = pageContent.querySelector('#stockTab_us');
         if (stockUs) stockUs.onclick = () => switchStockMarket('us');
-        const addStockBtn = homeContent.querySelector('#stockAddBtn');
+        const addStockBtn = pageContent.querySelector('#stockAddBtn');
         if (addStockBtn) addStockBtn.onclick = addStock;
 
-        const searchBtn = homeContent.querySelector('#searchBtn');
-        if (searchBtn) searchBtn.onclick = doGoogleSearch;
-        const searchInput = homeContent.querySelector('#searchInput');
-        if (searchInput) searchInput.addEventListener('keypress', e => { if (e.key === 'Enter') doGoogleSearch(); });
+        // ★ [修改] Google 搜尋 (改用 class 綁定)
+        const searchInput = pageContent.querySelector('.g-search-input');
+        const searchBtn = pageContent.querySelector('.g-search-btn');
+        if (searchInput && searchBtn) {
+            const searchFunc = () => executeGoogleSearch(searchInput);
+            searchBtn.onclick = searchFunc;
+            searchInput.addEventListener('keypress', e => { if (e.key === 'Enter') searchFunc(); });
+        }
 
-        const mapSearchBtn = homeContent.querySelector('#mapSearchBtn');
-        if (mapSearchBtn) mapSearchBtn.onclick = searchGoogleMaps;
-        const mapSearchInput = homeContent.querySelector('#mapSearchInput');
-        if (mapSearchInput) mapSearchInput.addEventListener('keypress', e => { if (e.key === 'Enter') searchGoogleMaps(); });
+        // ★ [修改] 地圖搜尋 (改用 class 綁定)
+        const mapSearchInput = pageContent.querySelector('.g-map-search-input');
+        const mapSearchBtn = pageContent.querySelector('.g-map-search-btn');
+        const mapIframe = pageContent.querySelector('.g-map-iframe');
+        if (mapSearchInput && mapSearchBtn && mapIframe) {
+            const mapSearchFunc = () => {
+                const query = mapSearchInput.value.trim();
+                if (query) searchMapQuery(query, mapIframe);
+            };
+            mapSearchBtn.onclick = mapSearchFunc;
+            mapSearchInput.addEventListener('keypress', e => { if (e.key === 'Enter') mapSearchFunc(); });
+        }
     }
     
     // "工作" 頁面啟動函式
@@ -852,17 +888,26 @@ document.addEventListener('DOMContentLoaded', function() {
         loadNotes();
         updatePomoDisplay();
         
-        const workContent = document.getElementById('content-area');
-        if (!workContent) return;
+        const pageContent = document.getElementById('content-area');
+        if (!pageContent) return;
 
-        const editLinksBtn = workContent.querySelector('#editLinksBtn');
-        if (editLinksBtn) editLinksBtn.onclick = () => toggleEditMode('editLinksBtn');
-        const saveLinkBtn = workContent.querySelector('#saveLinkBtn');
+        // ★ [新增] Google 搜尋 (綁定)
+        const searchInput = pageContent.querySelector('.g-search-input');
+        const searchBtn = pageContent.querySelector('.g-search-btn');
+        if (searchInput && searchBtn) {
+            const searchFunc = () => executeGoogleSearch(searchInput);
+            searchBtn.onclick = searchFunc;
+            searchInput.addEventListener('keypress', e => { if (e.key === 'Enter') searchFunc(); });
+        }
+
+        const editLinksBtn = pageContent.querySelector('#editLinksBtn');
+        if (editLinksBtn) editLinksBtn.onclick = () => toggleEditMode('editLinksBtn', 'quickLinkFormArea', renderWorkQuickLinks);
+        const saveLinkBtn = pageContent.querySelector('#saveLinkBtn');
         if (saveLinkBtn) saveLinkBtn.onclick = () => saveLink('quickLinkFormArea', workQuickLinks, 'portalWorkLinks', renderWorkQuickLinks);
-        const cancelLinkBtn = workContent.querySelector('#cancelLinkBtn');
+        const cancelLinkBtn = pageContent.querySelector('#cancelLinkBtn');
         if (cancelLinkBtn) cancelLinkBtn.onclick = () => hideLinkForm('quickLinkFormArea');
         
-        const linksContainer = workContent.querySelector('#workQuickLinksContainer');
+        const linksContainer = pageContent.querySelector('#workQuickLinksContainer');
         if (linksContainer) {
             linksContainer.onclick = function(e) {
                 const deleteBtn = e.target.closest('.quick-link-delete-btn');
@@ -877,19 +922,19 @@ document.addEventListener('DOMContentLoaded', function() {
             };
         }
 
-        const addTodoBtn = workContent.querySelector('#addTodoBtn');
+        const addTodoBtn = pageContent.querySelector('#addTodoBtn');
         if (addTodoBtn) addTodoBtn.onclick = addTodo;
-        const todoInput = workContent.querySelector('#todoInput');
+        const todoInput = pageContent.querySelector('#todoInput');
         if (todoInput) todoInput.addEventListener('keypress', e => { if (e.key === 'Enter') addTodo(); });
-        const todoList = workContent.querySelector('#todoList');
+        const todoList = pageContent.querySelector('#todoList');
         if (todoList) todoList.addEventListener('click', handleTodoClick);
 
-        const notesArea = workContent.querySelector('#quickNotesArea');
+        const notesArea = pageContent.querySelector('#quickNotesArea');
         if (notesArea) notesArea.addEventListener('input', saveNotes); 
 
-        const pomoStartBtn = workContent.querySelector('#pomoStartPauseBtn');
+        const pomoStartBtn = pageContent.querySelector('#pomoStartPauseBtn');
         if (pomoStartBtn) pomoStartBtn.onclick = startPausePomo;
-        const pomoResetBtn = workContent.querySelector('#pomoResetBtn');
+        const pomoResetBtn = pageContent.querySelector('#pomoResetBtn');
         if (pomoResetBtn) pomoResetBtn.onclick = resetPomo;
     }
 
@@ -910,22 +955,30 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // "地圖" 頁面啟動函式
     function initMapPage() {
-        const mapContent = document.getElementById('content-area');
-        if (!mapContent) return;
-        const mapSearchBtn = mapContent.querySelector('#fullMapSearchBtn');
-        if (mapSearchBtn) mapSearchBtn.onclick = searchFullGoogleMaps;
-        const mapSearchInput = mapContent.querySelector('#fullMapSearchInput');
-        if (mapSearchInput) mapSearchInput.addEventListener('keypress', e => { if (e.key === 'Enter') searchFullGoogleMaps(); });
+        const pageContent = document.getElementById('content-area');
+        if (!pageContent) return;
+
+        const mapIframe = pageContent.querySelector('.g-map-iframe');
+        const mapSearchInput = pageContent.querySelector('.g-map-search-input');
+        const mapSearchBtn = pageContent.querySelector('.g-map-search-btn');
         
-        // [新] 綁定快捷按鈕
-        const findMeBtn = mapContent.querySelector('#findMyLocationBtn');
-        if (findMeBtn) findMeBtn.onclick = findMyLocation;
+        if (mapSearchInput && mapSearchBtn && mapIframe) {
+             const mapSearchFunc = () => {
+                const query = mapSearchInput.value.trim();
+                if (query) searchMapQuery(query, mapIframe);
+            };
+            mapSearchBtn.onclick = mapSearchFunc;
+            mapSearchInput.addEventListener('keypress', e => { if (e.key === 'Enter') mapSearchFunc(); });
+        }
         
-        const coffeeBtn = mapContent.querySelector('#searchNearbyCoffeeBtn');
-        if (coffeeBtn) coffeeBtn.onclick = () => searchMapQuery('附近的咖啡廳');
+        const findMeBtn = pageContent.querySelector('#findMyLocationBtn');
+        if (findMeBtn) findMeBtn.onclick = () => findMyLocation(mapIframe);
         
-        const restaurantBtn = mapContent.querySelector('#searchNearbyRestaurantBtn');
-        if (restaurantBtn) restaurantBtn.onclick = () => searchMapQuery('附近的餐廳');
+        const coffeeBtn = pageContent.querySelector('#searchNearbyCoffeeBtn');
+        if (coffeeBtn) coffeeBtn.onclick = () => searchMapQuery('附近的咖啡廳', mapIframe);
+        
+        const restaurantBtn = pageContent.querySelector('#searchNearbyRestaurantBtn');
+        if (restaurantBtn) restaurantBtn.onclick = () => searchMapQuery('附近的餐廳', mapIframe);
     }
 
     // ★ (新) "個人" 頁面啟動函式 ★
@@ -939,18 +992,27 @@ document.addEventListener('DOMContentLoaded', function() {
         renderDailyLog();
 
         // 3. 綁定事件
-        const personalContent = document.getElementById('content-area');
-        if (!personalContent) return;
+        const pageContent = document.getElementById('content-area');
+        if (!pageContent) return;
+
+        // ★ [新增] Google 搜尋 (綁定)
+        const searchInput = pageContent.querySelector('.g-search-input');
+        const searchBtn = pageContent.querySelector('.g-search-btn');
+        if (searchInput && searchBtn) {
+            const searchFunc = () => executeGoogleSearch(searchInput);
+            searchBtn.onclick = searchFunc;
+            searchInput.addEventListener('keypress', e => { if (e.key === 'Enter') searchFunc(); });
+        }
 
         // 綁定快捷列按鈕
-        const editBtn = personalContent.querySelector('#editPersonalLinksBtn');
-        if (editBtn) editBtn.onclick = () => toggleEditMode('editPersonalLinksBtn');
-        const saveBtn = personalContent.querySelector('#savePersonalLinkBtn');
+        const editBtn = pageContent.querySelector('#editPersonalLinksBtn');
+        if (editBtn) editBtn.onclick = () => togglePersonalEditMode('editPersonalLinksBtn', 'personalLinkFormArea', renderPersonalQuickLinks);
+        const saveBtn = pageContent.querySelector('#savePersonalLinkBtn');
         if (saveBtn) saveBtn.onclick = () => saveLink('personalLinkFormArea', personalQuickLinks, 'portalPersonalLinks', renderPersonalQuickLinks);
-        const cancelBtn = personalContent.querySelector('#cancelPersonalLinkBtn');
+        const cancelBtn = pageContent.querySelector('#cancelPersonalLinkBtn');
         if (cancelBtn) cancelBtn.onclick = () => hideLinkForm('personalLinkFormArea');
 
-        const linksContainer = personalContent.querySelector('#personalQuickLinksContainer');
+        const linksContainer = pageContent.querySelector('#personalQuickLinksContainer');
         if (linksContainer) {
             linksContainer.onclick = function(e) {
                 const deleteBtn = e.target.closest('.quick-link-delete-btn');
@@ -966,7 +1028,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // 綁定隨筆
-        const addLogBtn = personalContent.querySelector('#addLogEntryBtn');
+        const addLogBtn = pageContent.querySelector('#addLogEntryBtn');
         if (addLogBtn) addLogBtn.onclick = addLogEntry;
     }
 
