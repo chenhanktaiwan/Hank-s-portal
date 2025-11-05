@@ -507,7 +507,8 @@ body {
   gap: 8px;
   cursor: pointer;
   text-decoration: none;
-  min-width: 80px;
+  /* ★ [優化] min-width 改為 width，確保間距一致 */
+  width: 80px; 
 }
 .quick-link-icon {
   width: 52px;
@@ -526,6 +527,13 @@ body {
   font-size: 13px;
   font-weight: 600;
   color: #3a6259;
+  
+  /* ★ [優化] 新增：文字截斷，顯示 ... */
+  width: 100%;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .quick-link-item:hover .quick-link-icon {
   background: #b8d4cb;
