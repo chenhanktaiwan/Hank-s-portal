@@ -738,7 +738,9 @@ function renderDailyLog() {
         listElement.innerHTML = '<li class="log-entry" style="color: #7a9794;">目前沒有隨筆</li>';
         return;
     }
-    [...dailyLog].reverse().forEach(entry => {
+    // ★★★ [個人分頁 修正 2/2] ★★★
+    // 移除了 .reverse()，因為 CSS 中已有 flex-direction: column-reverse
+    dailyLog.forEach(entry => {
         const item = document.createElement('li');
         item.className = 'log-entry';
         item.innerHTML = `
@@ -1012,7 +1014,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // 綁定快捷列按鈕
         const editBtn = pageContent.querySelector('#editPersonalLinksBtn');
-        if (editBtn) editBtn.onclick = () => togglePersonalEditMode('editPersonalLinksBtn', 'personalLinkFormArea', renderPersonalQuickLinks);
+        // ★★★ [個人分頁 修正 1/2] ★★★
+        // 1. 呼叫了錯誤的函式 (應為 toggleEditMode)
+        // 2. 傳遞了錯誤的函式 (應為 renderPersonalQuickLinks)
+        if (editBtn) editBtn.onclick = () => toggleEditMode('editPersonalLinksBtn', 'personalLinkFormArea', renderPersonalQuickLinks);
+        
         const saveBtn = pageContent.querySelector('#savePersonalLinkBtn');
         if (saveBtn) saveBtn.onclick = () => saveLink('personalLinkFormArea', personalQuickLinks, 'portalPersonalLinks', renderPersonalQuickLinks);
         const cancelBtn = pageContent.querySelector('#cancelPersonalLinkBtn');
