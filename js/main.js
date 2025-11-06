@@ -28,7 +28,7 @@ function searchMapQuery(query, iframeElement) {
     if (!iframeElement) return;
     
     // ★ [修正] ★ (地圖修正 - 已保留)
-    const newSrc = `https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed`;
+    const newSrc = `http://googleusercontent.com/maps/google.com/13{encodeURIComponent(query)}&output=embed`;
     iframeElement.src = newSrc;
 }
 
@@ -170,6 +170,7 @@ function cleanCData(str) {
         return str.substring(9, str.length - 3);
     }
     // 移除 .replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>')
+    // 必須回傳原始字串，才能讓 parseFullRSS 抓到 <img>
     return str; 
 }
 
@@ -248,7 +249,7 @@ async function loadNews(){
               break;
            } else { throw new Error('RSS 內容為空或無法解析'); }
       } catch(e) { 
-          console.warn(`RSS 來源 ${rssUrl} 失敗: ${e.message}`); 
+          console.warn(`RSS 來源 ${rssUrl} 失败: ${e.message}`); 
           list.innerHTML = `<li class="news-loading">新聞載入失敗: ${e.message}</li>`;
       }
   }
@@ -914,7 +915,7 @@ function renderPersonalQuickLinks() {
             
         container.innerHTML += `
             <a class="quick-link-item" onclick="openLink('${link.url}')" title="${link.name}">
-                ${isWorkLinkEditing ? `<button class="quick-link-delete-btn" data-index="${index}">×</button>` : ''}
+                ${isPersonalLinkEditing ? `<button class="quick-link-delete-btn" data-index="${index}">×</button>` : ''}
                 
                 <div class="quick-link-icon">
                     ${iconHtml} </div>
