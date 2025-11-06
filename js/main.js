@@ -1,4 +1,4 @@
-// js/main.js (完整版 - ★ 新增新聞子分類 ★)
+// js/main.js (完整版 - ★ 新聞分頁優化 ★)
 
 // --- ★★★ V5 移植過來的全域變數和輔助函式 ★★★ ---
 
@@ -40,21 +40,21 @@ const weatherCodes = {
   99:{emoji:'🌪️',desc:'強雷雨'}
 };
 
-// ★ [新聞優化] 修改 RSS_FEEDS 結構 ★
+// ★ [新聞優化] 修改 RSS_FEEDS 結構 (繼承上次優化) ★
 const RSS_FEEDS = {
-    // 將 'tw' 改為物件，包含子分類
     tw: {
-        focus: ['https://news.ltn.com.tw/rss/all.xml'], // 焦點 (使用 LTN 即時)
-        tech: ['https://technews.tw/feed/'], // 科技 (使用 TechNews)
-        finance: ['https://news.ltn.com.tw/rss/business.xml'], // 財經 (使用 LTN 財經)
-        sports: ['https://news.ltn.com.tw/rss/sports.xml'], // 運動 (使用 LTN 體育)
-        life: ['https://news.ltn.com.tw/rss/life.xml'] // 生活 (使用 LTN 生活)
+        focus: ['https://news.ltn.com.tw/rss/all.xml'], // 焦點
+        tech: ['https://technews.tw/feed/'], // 科技
+        finance: ['https://news.ltn.com.tw/rss/business.xml'], // 財經
+        sports: ['https://news.ltn.com.tw/rss/sports.xml'], // 運動
+        life: ['https://news.ltn.com.tw/rss/life.xml'], // 生活
+        other: ['https://www.cna.com.tw/rsspolitics.xml'] // ★ 新增 "其他" (使用 CNA 政治)
     },
     jp: ['https://www3.nhk.or.jp/rss/news/cat0.xml', 'https://www.asahi.com/rss/asahi/newsheadlines.rdf'],
     intl: ['https://feeds.bbci.co.uk/news/world/rss.xml']
 };
 let currentNewsTab = 'tw'; // 首頁小工具
-let currentNewsSubTab = 'focus'; // ★ [新聞優化] 新增子分類變數
+let currentNewsSubTab = 'focus'; // 首頁子分類變數
 
 
 // 股票 (V5)
@@ -617,8 +617,11 @@ function resetPomo() {
 }
 
 
-// --- ★★★ "新聞" 分頁 JS 邏輯 ★★★ ---
+// --- ★★★ "新聞" 分頁 JS 邏輯 (★ 優化 ★) ---
 let fullNewsTab = 'tw'; 
+let currentFullNewsSubTab = 'focus'; // ★ [新聞優化] 新增 "新聞分頁" 的子分類變數
+
+// ★ [新聞優化] 修改 parseFullRSS 以抓取圖片 ★
 function parseFullRSS(xmlText) {
     const articles = [];
     const maxArticles = 20; 
@@ -627,34 +630,72 @@ function parseFullRSS(xmlText) {
     if (items.length === 0) {
          items.push(...xmlText.matchAll(/<item[^>]+rdf:about="([^"]+)"[\s\S]*?<title>([\s\S]*?)<\/title>[\s\S]*?<\/item>/g));
          for (let i = 0; i < items.length && i < maxArticles; i++) {
-             articles.push({ title: cleanCData(items[i][2]), url: items[i][1], source: { name: '朝日新聞' }, description: '...' });
+             // ★ [新聞優化] 抓取圖片 (Rdf 格式通常沒有)
+             articles.push({ 
+                 title: cleanCData(items[i][2]), 
+                 url: items[i][1], 
+                 source: { name: '朝日新聞' }, 
+                 description: '...',
+                 imageUrl: null // ★
+             });
          }
          return articles;
     }
+    
     for (let i = 0; i < items.length && i < maxArticles; i++) {
         const itemContent = items[i][1];
+        
         const titleMatch = itemContent.match(/<title>([\s\S]*?)<\/title>/);
         const title = titleMatch ? cleanCData(titleMatch[1]) : '無標題';
+        
         const linkMatch = itemContent.match(/<link>([\s\S]*?)<\/link>/);
         const link = linkMatch ? (linkMatch[1] || '#') : '#';
+        
         const descMatch = itemContent.match(/<description>([\s\S]*?)<\/description>/);
         let description = descMatch ? cleanCData(descMatch[1]) : '...';
+
+        // ★ [新聞優化] 圖片抓取邏輯
+        let imageUrl = null;
+        // 1. 嘗試抓 <enclosure>
+        const enclosureMatch = itemContent.match(/<enclosure.*?url="([^"]+)"/);
+        if (enclosureMatch) {
+            imageUrl = enclosureMatch[1];
+        } else {
+            // 2. 嘗試抓 <media:content>
+            const mediaMatch = itemContent.match(/<media:content.*?url="([^"]+)"/);
+            if (mediaMatch) {
+                imageUrl = mediaMatch[1];
+            } else {
+                // 3. 嘗試從 description 內文中抓第一個 <img>
+                const descImgMatch = description.match(/<img.*?src="([^"]+)"/);
+                if (descImgMatch) {
+                    imageUrl = descImgMatch[1];
+                }
+            }
+        }
+
+        // ★ [新聞優化] 清理 description (在抓完圖片後才做)
         description = description.replace(/<[^>]+>/g, '').trim(); 
         if (description.length > 150) { 
             description = description.substring(0, 150) + '...';
         }
+        
         let sourceName = null;
         const creatorMatch = itemContent.match(/<dc:creator>([\s\S]*?)<\/dc:creator>/);
         sourceName = creatorMatch ? cleanCData(creatorMatch[1]) : 'N/A';
+        
         articles.push({ 
             title: title, 
             url: link.trim(), 
             source: { name: sourceName },
-            description: description
+            description: description,
+            imageUrl: imageUrl // ★ 新增 imageUrl
         });
     }
     return articles;
 }
+
+// ★ [新聞優化] 修改 loadFullNews
 async function loadFullNews() {
     const list = document.getElementById('fullNewsList');
     if (!list) return;
@@ -662,20 +703,41 @@ async function loadFullNews() {
     const refreshBtn = document.getElementById('full-refreshNewsBtn');
     if (refreshBtn) refreshBtn.disabled = true;
     
+    // 讀取儲存的主分類
     const savedTab = localStorage.getItem('portalNewsTab') || 'tw';
     fullNewsTab = savedTab;
+    
+    // ★ [新聞優化] 讀取儲存的子分類
+    const savedSubTab = localStorage.getItem('portalNewsSubTab') || 'focus';
+    currentFullNewsSubTab = savedSubTab;
+    
     const contentArea = document.getElementById('content-area');
     if (contentArea) {
+        // 更新主分類樣式
         contentArea.querySelectorAll('#page-news .news-tab').forEach(btn => btn.classList.remove('active'));
         const activeTab = contentArea.querySelector('#full-tab-'+fullNewsTab);
         if (activeTab) activeTab.classList.add('active');
+        
+        // ★ [新聞優化] 更新子分類樣式
+        contentArea.querySelectorAll('#page-news .sub-news-tab').forEach(btn => btn.classList.remove('active'));
+        const activeSubTab = contentArea.querySelector('#full-sub-tab-'+currentFullNewsSubTab);
+        if (activeSubTab) activeSubTab.classList.add('active');
+        
+        // ★ [新聞優化] 顯示/隱藏子分類列
+        const subTabs = contentArea.querySelector('#fullSubNewsTabs');
+        if (subTabs) {
+            subTabs.classList.toggle('hidden', fullNewsTab !== 'tw');
+        }
     }
 
-    // ★ [新聞優化]
-    // 雖然 'tw' 現在是物件，但 'fullNewsTab' 變數會是 'jp' 或 'intl'
-    // 'tw' 的情況只會在 'news.html' 頁面被修改時才需要調整，目前維持原樣
-    const urlsToTry = RSS_FEEDS[fullNewsTab] || RSS_FEEDS['tw']['focus']; //  fallback 改為 tw.focus
-    
+    // ★ [新聞優化] 更新 urlsToTry 邏輯
+    let urlsToTry;
+    if (fullNewsTab === 'tw') {
+        urlsToTry = RSS_FEEDS.tw[currentFullNewsSubTab] || RSS_FEEDS.tw['focus'];
+    } else {
+        urlsToTry = RSS_FEEDS[fullNewsTab] || []; // JP 或 Intl
+    }
+
     let success = false;
     for (const rssUrl of urlsToTry) {
         try {
@@ -694,15 +756,35 @@ async function loadFullNews() {
                     if (sourceName === 'N/A' || !sourceName) {
                         if (rssUrl.includes('cna.com')) sourceName = '中央通訊社';
                         else if (rssUrl.includes('ltn.com')) sourceName = '自由時報';
+                        else if (rssUrl.includes('technews.tw')) sourceName = '科技新報';
                         else if (rssUrl.includes('nhk.or.jp')) sourceName = 'NHK';
                         else if (rssUrl.includes('bbci.co.uk')) sourceName = 'BBC News';
                         else sourceName = 'RSS 來源';
                     }
+                    
+                    // ★ [新聞優化] 產生圖片 HTML
+                    let imageHtml = '';
+                    if (article.imageUrl) {
+                        imageHtml = `
+                        <div class="full-news-image-container">
+                            <img src="${article.imageUrl}" class="full-news-image" alt="">
+                        </div>`;
+                    } else {
+                        imageHtml = `
+                        <div class="full-news-image-container placeholder">
+                            <span class="placeholder-icon">📰</span>
+                        </div>`;
+                    }
+                    
+                    // ★ [新聞優化] 插入新的 HTML 結構
                     list.insertAdjacentHTML('beforeend', `
                         <li class="full-news-item" onclick="openLink('${article.url}')">
-                            <div class="full-news-title">${article.title || '無標題'}</div>
-                            <div class="full-news-meta">${sourceName}</div>
-                            <div class="full-news-desc">${article.description}</div>
+                            ${imageHtml}
+                            <div class="full-news-content">
+                                <div class="full-news-title">${article.title || '無標題'}</div>
+                                <div class="full-news-meta">${sourceName}</div>
+                                <div class="full-news-desc">${article.description}</div>
+                            </div>
                         </li>`);
                 });
                 success = true;
@@ -718,14 +800,49 @@ async function loadFullNews() {
     }
     if (refreshBtn) refreshBtn.disabled = false;
 }
+
+// ★ [新聞優化] 修改 switchFullNewsTab
 function switchFullNewsTab(tab) {
     fullNewsTab = tab;
     localStorage.setItem('portalNewsTab', tab); 
+    
+    // ★ [新聞優化] 如果切換到非 'tw'，重設子分類
+    if (tab !== 'tw') {
+        currentFullNewsSubTab = 'focus'; // 重設
+        localStorage.setItem('portalNewsSubTab', 'focus'); // 清除儲存
+    }
+    
     const contentArea = document.getElementById('content-area');
     if (!contentArea) return;
+    
+    // 更新主分類樣式
     contentArea.querySelectorAll('#page-news .news-tab').forEach(btn => btn.classList.remove('active'));
     const activeTab = contentArea.querySelector('#full-tab-'+tab);
     if (activeTab) activeTab.classList.add('active');
+    
+    // ★ [新聞優化] 顯示/隱藏子分類列
+    const subTabs = contentArea.querySelector('#fullSubNewsTabs');
+    if (subTabs) {
+        subTabs.classList.toggle('hidden', tab !== 'tw');
+    }
+    
+    loadFullNews();
+}
+
+// ★ [新聞優化] 新增：切換子分類頁籤的函式 ★
+function switchFullNewsSubTab(subTab) {
+    currentFullNewsSubTab = subTab;
+    localStorage.setItem('portalNewsSubTab', subTab); // 儲存子分類
+    
+    const contentArea = document.getElementById('content-area');
+    if (!contentArea) return;
+    
+    // 更新子分類頁籤樣式
+    contentArea.querySelectorAll('#page-news .sub-news-tab').forEach(btn => btn.classList.remove('active'));
+    const activeSubTab = contentArea.querySelector('#full-sub-tab-' + subTab);
+    if (activeSubTab) activeSubTab.classList.add('active');
+    
+    // 重新載入新聞
     loadFullNews();
 }
 
@@ -1064,11 +1181,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (pomoResetBtn) pomoResetBtn.onclick = resetPomo;
     }
 
-    // "新聞" 頁面啟動函式
+    // "新聞" 頁面啟動函式 (★ 優化 ★)
     function initNewsPage() {
         loadFullNews();
         const newsContent = document.getElementById('content-area');
         if (!newsContent) return;
+        
+        // 綁定主分類
         const newsTw = newsContent.querySelector('#full-tab-tw');
         if (newsTw) newsTw.onclick = () => switchFullNewsTab('tw');
         const newsJp = newsContent.querySelector('#full-tab-jp');
@@ -1077,6 +1196,20 @@ document.addEventListener('DOMContentLoaded', function() {
         if (newsIntl) newsIntl.onclick = () => switchFullNewsTab('intl');
         const refreshNews = newsContent.querySelector('#full-refreshNewsBtn');
         if (refreshNews) refreshNews.onclick = loadFullNews;
+        
+        // ★ [新聞優化] 綁定子分類
+        const subFocus = newsContent.querySelector('#full-sub-tab-focus');
+        if (subFocus) subFocus.onclick = () => switchFullNewsSubTab('focus');
+        const subTech = newsContent.querySelector('#full-sub-tab-tech');
+        if (subTech) subTech.onclick = () => switchFullNewsSubTab('tech');
+        const subFinance = newsContent.querySelector('#full-sub-tab-finance');
+        if (subFinance) subFinance.onclick = () => switchFullNewsSubTab('finance');
+        const subSports = newsContent.querySelector('#full-sub-tab-sports');
+        if (subSports) subSports.onclick = () => switchFullNewsSubTab('sports');
+        const subLife = newsContent.querySelector('#full-sub-tab-life');
+        if (subLife) subLife.onclick = () => switchFullNewsSubTab('life');
+        const subOther = newsContent.querySelector('#full-sub-tab-other');
+        if (subOther) subOther.onclick = () => switchFullNewsSubTab('other');
     }
 
     // "地圖" 頁面啟動函式
