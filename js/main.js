@@ -1,4 +1,4 @@
-// js/main.js (完整版 - ★ 新聞分頁優化 ★)
+// js/main.js (完整版 - ★ 修正新聞圖片抓取 ★)
 
 // --- ★★★ V5 移植過來的全域變數和輔助函式 ★★★ ---
 
@@ -163,12 +163,16 @@ function switchNewsSubTab(subTab) {
     loadNews();
 }
 
+// ★★★ [圖片修正] ★★★
+// 修正 cleanCData 函式，移除錯誤的 HTML 編碼，只處理 CDATA
 function cleanCData(str) {
     if (str.startsWith('<![CDATA[') && str.endsWith(']]>')) {
         return str.substring(9, str.length - 3);
     }
-    return str.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>');
+    // 移除 .replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>')
+    return str; 
 }
+
 function parseRSS(xmlText) {
     const articles = [];
     const maxArticles = 5; 
@@ -652,6 +656,7 @@ function parseFullRSS(xmlText) {
         const link = linkMatch ? (linkMatch[1] || '#') : '#';
         
         const descMatch = itemContent.match(/<description>([\s\S]*?)<\/description>/);
+        // ★ [圖片修正] 1. 先取得原始 HTML (或 CData 內容)
         let description = descMatch ? cleanCData(descMatch[1]) : '...';
 
         // ★ [新聞優化] 圖片抓取邏輯
@@ -666,15 +671,15 @@ function parseFullRSS(xmlText) {
             if (mediaMatch) {
                 imageUrl = mediaMatch[1];
             } else {
-                // 3. 嘗試從 description 內文中抓第一個 <img>
-                const descImgMatch = description.match(/<img.*?src="([^"]+)"/);
+                // 3. 嘗試從 description (原始 HTML) 內文中抓第一個 <img>
+                const descImgMatch = description.match(/<img.*?src="([^"]+)"/); // <-- 修正後這裡會成功
                 if (descImgMatch) {
                     imageUrl = descImgMatch[1];
                 }
             }
         }
 
-        // ★ [新聞優化] 清理 description (在抓完圖片後才做)
+        // ★ [圖片修正] 2. 現在才清理 description 供文字顯示
         description = description.replace(/<[^>]+>/g, '').trim(); 
         if (description.length > 150) { 
             description = description.substring(0, 150) + '...';
@@ -688,7 +693,7 @@ function parseFullRSS(xmlText) {
             title: title, 
             url: link.trim(), 
             source: { name: sourceName },
-            description: description,
+            description: description, // ★ 修正
             imageUrl: imageUrl // ★ 新增 imageUrl
         });
     }
