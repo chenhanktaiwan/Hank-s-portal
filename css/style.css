@@ -208,6 +208,41 @@ body {
   border-color:#7ba8a3;
   color:white;
 }
+
+/* ★ [新聞優化] 新增的子分類頁籤樣式 ★ */
+.sub-news-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #eef3f3;
+    overflow-x: auto;
+}
+.sub-news-tab {
+    background: #f1f7f5;
+    color: #3e7e72;
+    border: none;
+    border-radius: 8px;
+    padding: 6px 16px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.3s, color 0.3s;
+    white-space: nowrap;
+}
+.sub-news-tab:hover {
+    background-color: #e6f0ee;
+}
+.sub-news-tab.active {
+    background-color: #5A7D78; /* 使用導覽列的強調色 */
+    color: white;
+}
+/* 預設隱藏，由 JS 控制顯示 */
+.sub-news-tabs.hidden {
+    display: none;
+}
+
+
 .refresh-btn {
   font-weight:600;
   background:#7ba8a3;
