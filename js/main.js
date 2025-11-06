@@ -1,4 +1,4 @@
-// js/main.js (完整版 - ★ 強制 Favicon + 視覺修正 ★)
+// js/main.js (完整版 - ★ 新增新聞子分類 ★)
 
 // --- ★★★ V5 移植過來的全域變數和輔助函式 ★★★ ---
 
@@ -40,13 +40,22 @@ const weatherCodes = {
   99:{emoji:'🌪️',desc:'強雷雨'}
 };
 
-// 新聞 (V5)
+// ★ [新聞優化] 修改 RSS_FEEDS 結構 ★
 const RSS_FEEDS = {
-    tw: ['https://news.ltn.com.tw/rss/all.xml', 'https://www.cna.com.tw/rsspolitics.xml'],
+    // 將 'tw' 改為物件，包含子分類
+    tw: {
+        focus: ['https://news.ltn.com.tw/rss/all.xml'], // 焦點 (使用 LTN 即時)
+        tech: ['https://technews.tw/feed/'], // 科技 (使用 TechNews)
+        finance: ['https://news.ltn.com.tw/rss/business.xml'], // 財經 (使用 LTN 財經)
+        sports: ['https://news.ltn.com.tw/rss/sports.xml'], // 運動 (使用 LTN 體育)
+        life: ['https://news.ltn.com.tw/rss/life.xml'] // 生活 (使用 LTN 生活)
+    },
     jp: ['https://www3.nhk.or.jp/rss/news/cat0.xml', 'https://www.asahi.com/rss/asahi/newsheadlines.rdf'],
     intl: ['https://feeds.bbci.co.uk/news/world/rss.xml']
 };
 let currentNewsTab = 'tw'; // 首頁小工具
+let currentNewsSubTab = 'focus'; // ★ [新聞優化] 新增子分類變數
+
 
 // 股票 (V5)
 const stockWatchlist = {
@@ -114,11 +123,46 @@ function switchNewsTab(tab){
   currentNewsTab = tab;
   const contentArea = document.getElementById('content-area');
   if (!contentArea) return;
+
+  // 更新主頁籤樣式
   contentArea.querySelectorAll('#page-home .news-tab').forEach(btn => btn.classList.remove('active'));
   const activeTab = contentArea.querySelector('#tab-'+tab);
   if (activeTab) activeTab.classList.add('active');
+  
+  // ★ [新聞優化] 根據主頁籤，顯示或隱藏子分類頁籤 ★
+  const subTabs = contentArea.querySelector('#subNewsTabs');
+  if (subTabs) {
+      if (tab === 'tw') {
+          subTabs.classList.remove('hidden');
+      } else {
+          subTabs.classList.add('hidden');
+      }
+  }
+  
+  // 重設子分類為 'focus' (焦點)
+  currentNewsSubTab = 'focus';
+  contentArea.querySelectorAll('#page-home .sub-news-tab').forEach(btn => btn.classList.remove('active'));
+  const activeSubTab = contentArea.querySelector('#sub-tab-focus');
+  if (activeSubTab) activeSubTab.classList.add('active');
+
   loadNews();
 }
+
+// ★ [新聞優化] 新增：切換子分類頁籤的函式 ★
+function switchNewsSubTab(subTab) {
+    currentNewsSubTab = subTab;
+    const contentArea = document.getElementById('content-area');
+    if (!contentArea) return;
+    
+    // 更新子分類頁籤樣式
+    contentArea.querySelectorAll('#page-home .sub-news-tab').forEach(btn => btn.classList.remove('active'));
+    const activeSubTab = contentArea.querySelector('#sub-tab-' + subTab);
+    if (activeSubTab) activeSubTab.classList.add('active');
+    
+    // 重新載入新聞
+    loadNews();
+}
+
 function cleanCData(str) {
     if (str.startsWith('<![CDATA[') && str.endsWith(']]>')) {
         return str.substring(9, str.length - 3);
@@ -156,7 +200,17 @@ async function loadNews(){
   list.innerHTML = '<li class="news-loading">載入新聞中...</li>';
   const refreshBtn = document.getElementById('refreshNewsBtn');
   if (refreshBtn) refreshBtn.disabled = true;
-  const urlsToTry = RSS_FEEDS[currentNewsTab] || RSS_FEEDS['tw'];
+
+  // ★ [新聞優化] 修改讀取 RSS 來源的邏輯 ★
+  let urlsToTry;
+  if (currentNewsTab === 'tw') {
+      // 如果是台灣，則讀取子分類
+      urlsToTry = RSS_FEEDS.tw[currentNewsSubTab] || RSS_FEEDS.tw['focus'];
+  } else {
+      // 否則，讀取 'jp' 或 'intl'
+      urlsToTry = RSS_FEEDS[currentNewsTab] || RSS_FEEDS.tw['focus'];
+  }
+
   let success = false;
   for (const rssUrl of urlsToTry) {
       try {
@@ -175,6 +229,7 @@ async function loadNews(){
                   if (sourceName === 'N/A' || !sourceName) {
                       if (rssUrl.includes('cna.com')) sourceName = '中央通訊社';
                       else if (rssUrl.includes('ltn.com')) sourceName = '自由時報';
+                      else if (rssUrl.includes('technews.tw')) sourceName = '科技新報'; // ★ 新增來源
                       else if (rssUrl.includes('nhk.or.jp')) sourceName = 'NHK';
                       else if (rssUrl.includes('bbci.co.uk')) sourceName = 'BBC News';
                       else sourceName = 'RSS 來源';
@@ -616,7 +671,11 @@ async function loadFullNews() {
         if (activeTab) activeTab.classList.add('active');
     }
 
-    const urlsToTry = RSS_FEEDS[fullNewsTab] || RSS_FEEDS['tw'];
+    // ★ [新聞優化]
+    // 雖然 'tw' 現在是物件，但 'fullNewsTab' 變數會是 'jp' 或 'intl'
+    // 'tw' 的情況只會在 'news.html' 頁面被修改時才需要調整，目前維持原樣
+    const urlsToTry = RSS_FEEDS[fullNewsTab] || RSS_FEEDS['tw']['focus']; //  fallback 改為 tw.focus
+    
     let success = false;
     for (const rssUrl of urlsToTry) {
         try {
@@ -895,6 +954,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const weatherSelector = pageContent.querySelector('#locationSelectorMain');
         if (weatherSelector) weatherSelector.onchange = () => updateWeather('locationSelectorMain');
         
+        // ★ [新聞優化] 綁定主頁籤事件 ★
         const newsTw = pageContent.querySelector('#tab-tw');
         if (newsTw) newsTw.onclick = () => switchNewsTab('tw');
         const newsJp = pageContent.querySelector('#tab-jp');
@@ -903,6 +963,18 @@ document.addEventListener('DOMContentLoaded', function() {
         if (newsIntl) newsIntl.onclick = () => switchNewsTab('intl');
         const refreshNews = pageContent.querySelector('#refreshNewsBtn');
         if (refreshNews) refreshNews.onclick = loadNews;
+
+        // ★ [新聞優化] 綁定子分類頁籤事件 ★
+        const subFocus = pageContent.querySelector('#sub-tab-focus');
+        if (subFocus) subFocus.onclick = () => switchNewsSubTab('focus');
+        const subTech = pageContent.querySelector('#sub-tab-tech');
+        if (subTech) subTech.onclick = () => switchNewsSubTab('tech');
+        const subFinance = pageContent.querySelector('#sub-tab-finance');
+        if (subFinance) subFinance.onclick = () => switchNewsSubTab('finance');
+        const subSports = pageContent.querySelector('#sub-tab-sports');
+        if (subSports) subSports.onclick = () => switchNewsSubTab('sports');
+        const subLife = pageContent.querySelector('#sub-tab-life');
+        if (subLife) subLife.onclick = () => switchNewsSubTab('life');
         
         const stockTw = pageContent.querySelector('#stockTab_tw');
         if (stockTw) stockTw.onclick = () => switchStockMarket('tw');
