@@ -249,7 +249,7 @@ async function loadNews(){
               break;
            } else { throw new Error('RSS 內容為空或無法解析'); }
       } catch(e) { 
-          console.warn(`RSS 來源 ${rssUrl} 失败: ${e.message}`); 
+          console.warn(`RSS 來源 ${rssUrl} 失敗: ${e.message}`); 
           list.innerHTML = `<li class="news-loading">新聞載入失敗: ${e.message}</li>`;
       }
   }
@@ -626,6 +626,17 @@ function resetPomo() {
 let fullNewsTab = 'tw'; 
 let currentFullNewsSubTab = 'focus'; // ★ [新聞優化] 新增 "新聞分頁" 的子分類變數
 
+// ★ [圖片修正] 新增 HTML 解碼函式
+function unescapeHTML(str) {
+    if (!str) return '';
+    return str
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&amp;/g, '&'); // &amp; 必須最後處理
+}
+
 // ★ [新聞優化] 修改 parseFullRSS 以抓取圖片 ★
 function parseFullRSS(xmlText) {
     const articles = [];
@@ -657,8 +668,11 @@ function parseFullRSS(xmlText) {
         const link = linkMatch ? (linkMatch[1] || '#') : '#';
         
         const descMatch = itemContent.match(/<description>([\s\S]*?)<\/description>/);
-        // ★ [圖片修正] 1. 先取得原始 HTML (或 CData 內容)
-        let description = descMatch ? cleanCData(descMatch[1]) : '...';
+        // ★ [圖片修正] 1. 取得 CData 或 (已編碼的) HTML
+        let descriptionHTML = descMatch ? cleanCData(descMatch[1]) : '...';
+        
+        // ★ [圖片修正] 2. ★ 解碼 HTML ★ 
+        let unescapedDescription = unescapeHTML(descriptionHTML);
 
         // ★ [新聞優化] 圖片抓取邏輯
         let imageUrl = null;
@@ -672,18 +686,18 @@ function parseFullRSS(xmlText) {
             if (mediaMatch) {
                 imageUrl = mediaMatch[1];
             } else {
-                // 3. 嘗試從 description (原始 HTML) 內文中抓第一個 <img>
-                const descImgMatch = description.match(/<img.*?src="([^"]+)"/); // <-- 修正後這裡會成功
+                // 3. 嘗試從 *解碼後的* description 內文中抓第一個 <img>
+                const descImgMatch = unescapedDescription.match(/<img.*?src="([^"]+)"/); // <-- 修正後這裡會成功
                 if (descImgMatch) {
                     imageUrl = descImgMatch[1];
                 }
             }
         }
 
-        // ★ [圖片修正] 2. 現在才清理 description 供文字顯示
-        description = description.replace(/<[^>]+>/g, '').trim(); 
-        if (description.length > 150) { 
-            description = description.substring(0, 150) + '...';
+        // ★ [圖片修正] 3. 現在才清理 description 供文字顯示
+        let descriptionText = unescapedDescription.replace(/<[^>]+>/g, '').trim(); 
+        if (descriptionText.length > 150) { 
+            descriptionText = descriptionText.substring(0, 150) + '...';
         }
         
         let sourceName = null;
@@ -694,7 +708,7 @@ function parseFullRSS(xmlText) {
             title: title, 
             url: link.trim(), 
             source: { name: sourceName },
-            description: description, // ★ 修正
+            description: descriptionText, // ★ 修正
             imageUrl: imageUrl // ★ 新增 imageUrl
         });
     }
@@ -915,7 +929,7 @@ function renderPersonalQuickLinks() {
             
         container.innerHTML += `
             <a class="quick-link-item" onclick="openLink('${link.url}')" title="${link.name}">
-                ${isPersonalLinkEditing ? `<button class="quick-link-delete-btn" data-index="${index}">×</button>` : ''}
+                ${isWorkLinkEditing ? `<button class="quick-link-delete-btn" data-index="${index}">×</button>` : ''}
                 
                 <div class="quick-link-icon">
                     ${iconHtml} </div>
@@ -1283,7 +1297,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (linksContainer) {
             linksContainer.onclick = function(e) {
                 const deleteBtn = e.target.closest('.quick-link-delete-btn');
-                const addBtn = e.target.closest('#addNewPersonalLinkBtn');
+                const addBtn = e.target.closest('#addNewLinkBtn');
                 if (deleteBtn) {
                     e.stopPropagation(); e.preventDefault();
                     deleteLink(deleteBtn.dataset.index, personalQuickLinks, 'portalPersonalLinks', renderPersonalQuickLinks);
