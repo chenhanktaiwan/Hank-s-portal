@@ -1,4 +1,4 @@
-// js/main.js (完整版 - ★ 修正新聞圖片抓取 ★)
+// js/main.js (完整版 - ★ 修正地圖搜尋語法 ★)
 
 // --- ★★★ V5 移植過來的全域變數和輔助函式 ★★★ ---
 
@@ -27,8 +27,9 @@ function executeGoogleSearch(inputElement) {
 function searchMapQuery(query, iframeElement) {
     if (!iframeElement) return;
     
-    // ★ [修正] ★ (地圖修正 - 已保留)
-    const newSrc = `http://googleusercontent.com/maps/google.com/13{encodeURIComponent(query)}&output=embed`;
+    // ★★★ [地圖搜尋 修正] ★★★
+    // 補上遺漏的 $ 符號，使其能正確組合 URL
+    const newSrc = `http://googleusercontent.com/maps/google.com/13${encodeURIComponent(query)}&output=embed`;
     iframeElement.src = newSrc;
 }
 
@@ -164,13 +165,11 @@ function switchNewsSubTab(subTab) {
 }
 
 // ★★★ [圖片修正] ★★★
-// 修正 cleanCData 函式，移除錯誤的 HTML 編碼，只處理 CDATA
+// (此修正已在上一版包含，繼續保留)
 function cleanCData(str) {
     if (str.startsWith('<![CDATA[') && str.endsWith(']]>')) {
         return str.substring(9, str.length - 3);
     }
-    // 移除 .replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>')
-    // 必須回傳原始字串，才能讓 parseFullRSS 抓到 <img>
     return str; 
 }
 
@@ -448,7 +447,7 @@ function showLinkForm(formId, index = -1) {
     const form = document.getElementById(formId);
     if (!form) return;
     const title = form.querySelector('h3');
-    const nameInput = form.querySelector('input[type="text"][placeholder*="名稱"]'); // 改用 placeholder 搜尋
+    const nameInput = form.querySelector('input[type="text"][placeholder*="名称"]'); // 改用 placeholder 搜尋
     const urlInput = form.querySelector('input[type="text"][placeholder*="網址"]');
     // const iconInput = ... // 已從 HTML 移除
     const indexInput = form.querySelector('input[type="hidden"]');
@@ -469,7 +468,7 @@ function hideLinkForm(formId) {
 function saveLink(formId, list, storageKey, renderFunc) {
     const form = document.getElementById(formId);
     if (!form) return;
-    const nameInput = form.querySelector('input[type="text"][placeholder*="名稱"]');
+    const nameInput = form.querySelector('input[type="text"][placeholder*="名称"]');
     const urlInput = form.querySelector('input[type="text"][placeholder*="網址"]');
     // const iconInput = ... // 已從 HTML 移除
     const indexInput = form.querySelector('input[type="hidden"]');
@@ -939,7 +938,7 @@ function renderPersonalQuickLinks() {
         `;
     });
     
-    if (isPersonalLinkEditing) {
+    if (isWorkLinkEditing) {
         container.innerHTML += `
             <a class="quick-link-item quick-link-add-btn" id="addNewPersonalLinkBtn" title="新增連結">
                 <div class="quick-link-icon">+</div>
@@ -1291,13 +1290,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const saveBtn = pageContent.querySelector('#savePersonalLinkBtn');
         if (saveBtn) saveBtn.onclick = () => saveLink('personalLinkFormArea', personalQuickLinks, 'portalPersonalLinks', renderPersonalQuickLinks);
         const cancelBtn = pageContent.querySelector('#cancelPersonalLinkBtn');
-        if (cancelBtn) cancelBtn.onclick = () => hideLinkForm('personalLinkFormArea');
+        if (cancelBtn) cancelLinkBtn.onclick = () => hideLinkForm('personalLinkFormArea');
 
         const linksContainer = pageContent.querySelector('#personalQuickLinksContainer');
         if (linksContainer) {
             linksContainer.onclick = function(e) {
                 const deleteBtn = e.target.closest('.quick-link-delete-btn');
-                const addBtn = e.target.closest('#addNewLinkBtn');
+                const addBtn = e.target.closest('#addNewPersonalLinkBtn');
                 if (deleteBtn) {
                     e.stopPropagation(); e.preventDefault();
                     deleteLink(deleteBtn.dataset.index, personalQuickLinks, 'portalPersonalLinks', renderPersonalQuickLinks);
