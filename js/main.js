@@ -928,7 +928,7 @@ function renderPersonalQuickLinks() {
             
         container.innerHTML += `
             <a class="quick-link-item" onclick="openLink('${link.url}')" title="${link.name}">
-                ${isWorkLinkEditing ? `<button class="quick-link-delete-btn" data-index="${index}">×</button>` : ''}
+                ${isPersonalLinkEditing ? `<button class="quick-link-delete-btn" data-index="${index}">×</button>` : ''}
                 
                 <div class="quick-link-icon">
                     ${iconHtml} </div>
@@ -938,7 +938,7 @@ function renderPersonalQuickLinks() {
         `;
     });
     
-    if (isWorkLinkEditing) {
+    if (isPersonalLinkEditing) {
         container.innerHTML += `
             <a class="quick-link-item quick-link-add-btn" id="addNewPersonalLinkBtn" title="新增連結">
                 <div class="quick-link-icon">+</div>
@@ -1290,7 +1290,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const saveBtn = pageContent.querySelector('#savePersonalLinkBtn');
         if (saveBtn) saveBtn.onclick = () => saveLink('personalLinkFormArea', personalQuickLinks, 'portalPersonalLinks', renderPersonalQuickLinks);
         const cancelBtn = pageContent.querySelector('#cancelPersonalLinkBtn');
-        if (cancelBtn) cancelLinkBtn.onclick = () => hideLinkForm('personalLinkFormArea');
+        if (cancelBtn) cancelBtn.onclick = () => hideLinkForm('personalLinkFormArea');
 
         const linksContainer = pageContent.querySelector('#personalQuickLinksContainer');
         if (linksContainer) {
